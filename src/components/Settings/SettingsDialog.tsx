@@ -21,20 +21,10 @@ export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDia
   const [isLoading, setIsLoading] = useState(false);
   const { showToast } = useToast();
 
-  // Extraction settings
-  const [extractionApiKey, setExtractionApiKey] = useState("");
-  const [extractionEndpoint, setExtractionEndpoint] = useState("https://api.openai.com/v1");
-  const [extractionModel, setExtractionModel] = useState("gpt-4o");
-
-  // Solution settings
-  const [solutionApiKey, setSolutionApiKey] = useState("");
-  const [solutionEndpoint, setSolutionEndpoint] = useState("https://api.openai.com/v1");
-  const [solutionModel, setSolutionModel] = useState("gpt-4o");
-
-  // Debugging settings
-  const [debuggingApiKey, setDebuggingApiKey] = useState("");
-  const [debuggingEndpoint, setDebuggingEndpoint] = useState("https://api.openai.com/v1");
-  const [debuggingModel, setDebuggingModel] = useState("gpt-4o");
+  // Unified AI settings
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [aiEndpoint, setAiEndpoint] = useState("https://api.openai.com/v1");
+  const [aiModel, setAiModel] = useState("gpt-4o");
 
   // Sync with external open state
   useEffect(() => {
@@ -57,29 +47,17 @@ export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDia
     if (open) {
       setIsLoading(true);
       interface Config {
-        extractionApiKey?: string;
-        extractionEndpoint?: string;
-        extractionModel?: string;
-        solutionApiKey?: string;
-        solutionEndpoint?: string;
-        solutionModel?: string;
-        debuggingApiKey?: string;
-        debuggingEndpoint?: string;
-        debuggingModel?: string;
+        aiApiKey?: string;
+        aiEndpoint?: string;
+        aiModel?: string;
       }
 
       window.electronAPI
         .getConfig()
         .then((config: Config) => {
-          setExtractionApiKey(config.extractionApiKey || "");
-          setExtractionEndpoint(config.extractionEndpoint || "https://api.openai.com/v1");
-          setExtractionModel(config.extractionModel || "gpt-4o");
-          setSolutionApiKey(config.solutionApiKey || "");
-          setSolutionEndpoint(config.solutionEndpoint || "https://api.openai.com/v1");
-          setSolutionModel(config.solutionModel || "gpt-4o");
-          setDebuggingApiKey(config.debuggingApiKey || "");
-          setDebuggingEndpoint(config.debuggingEndpoint || "https://api.openai.com/v1");
-          setDebuggingModel(config.debuggingModel || "gpt-4o");
+          setAiApiKey(config.aiApiKey || "");
+          setAiEndpoint(config.aiEndpoint || "https://api.openai.com/v1");
+          setAiModel(config.aiModel || "gpt-4o");
         })
         .catch((error: unknown) => {
           console.error("Failed to load config:", error);
@@ -95,15 +73,9 @@ export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDia
     setIsLoading(true);
     try {
       const result = await window.electronAPI.updateConfig({
-        extractionApiKey,
-        extractionEndpoint,
-        extractionModel,
-        solutionApiKey,
-        solutionEndpoint,
-        solutionModel,
-        debuggingApiKey,
-        debuggingEndpoint,
-        debuggingModel,
+        aiApiKey,
+        aiEndpoint,
+        aiModel,
       });
 
       if (result) {
@@ -224,53 +196,23 @@ export function SettingsDialog({ open: externalOpen, onOpenChange }: SettingsDia
         <DialogHeader>
           <DialogTitle>API Settings</DialogTitle>
           <DialogDescription className="text-white/70">
-            Configure API settings for each function. Each function can use a different AI provider.
+            Configure AI model settings. A single vision-capable model is used for extraction, code generation, and debugging.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Screenshot Extraction Section */}
+          {/* Unified AI Section */}
           <div className="p-4 rounded-lg bg-white/5 border border-white/10">
             {renderConfigSection(
-              "Screenshot Extraction",
-              "Model used to analyze screenshots and extract problem details",
-              extractionApiKey,
-              setExtractionApiKey,
-              extractionEndpoint,
-              setExtractionEndpoint,
-              extractionModel,
-              setExtractionModel,
-              "extraction"
-            )}
-          </div>
-
-          {/* Solution Generation Section */}
-          <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-            {renderConfigSection(
-              "Solution Generation",
-              "Model used to generate coding solutions",
-              solutionApiKey,
-              setSolutionApiKey,
-              solutionEndpoint,
-              setSolutionEndpoint,
-              solutionModel,
-              setSolutionModel,
-              "solution"
-            )}
-          </div>
-
-          {/* Debugging Section */}
-          <div className="p-4 rounded-lg bg-white/5 border border-white/10">
-            {renderConfigSection(
-              "Debugging",
-              "Model used to debug and improve solutions",
-              debuggingApiKey,
-              setDebuggingApiKey,
-              debuggingEndpoint,
-              setDebuggingEndpoint,
-              debuggingModel,
-              setDebuggingModel,
-              "debugging"
+              "AI Model Configuration",
+              "Vision-capable model for extracting problem details, generating solutions, and debugging",
+              aiApiKey,
+              setAiApiKey,
+              aiEndpoint,
+              setAiEndpoint,
+              aiModel,
+              setAiModel,
+              "ai"
             )}
           </div>
 

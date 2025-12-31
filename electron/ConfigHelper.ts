@@ -6,15 +6,9 @@ import path from "node:path"
 import { OpenAI } from "openai"
 
 interface Config {
-  extractionApiKey: string;
-  extractionEndpoint: string;
-  extractionModel: string;
-  solutionApiKey: string;
-  solutionEndpoint: string;
-  solutionModel: string;
-  debuggingApiKey: string;
-  debuggingEndpoint: string;
-  debuggingModel: string;
+  aiApiKey: string;
+  aiEndpoint: string;
+  aiModel: string;
   language: string;
   opacity: number;
 }
@@ -22,15 +16,9 @@ interface Config {
 export class ConfigHelper extends EventEmitter {
   private configPath: string;
   private defaultConfig: Config = {
-    extractionApiKey: "",
-    extractionEndpoint: "https://api.openai.com/v1",
-    extractionModel: "gpt-4o",
-    solutionApiKey: "",
-    solutionEndpoint: "https://api.openai.com/v1",
-    solutionModel: "gpt-4o",
-    debuggingApiKey: "",
-    debuggingEndpoint: "https://api.openai.com/v1",
-    debuggingModel: "gpt-4o",
+    aiApiKey: "",
+    aiEndpoint: "https://api.openai.com/v1",
+    aiModel: "gpt-4o",
     language: "python",
     opacity: 1.0
   };
@@ -125,33 +113,31 @@ export class ConfigHelper extends EventEmitter {
    */
   public hasApiKey(): boolean {
     const config = this.loadConfig();
-    return !!(config.extractionApiKey && config.extractionApiKey.trim().length > 0) ||
-           !!(config.solutionApiKey && config.solutionApiKey.trim().length > 0) ||
-           !!(config.debuggingApiKey && config.debuggingApiKey.trim().length > 0);
+    return !!(config.aiApiKey && config.aiApiKey.trim().length > 0);
   }
 
   /**
-   * Check if extraction API key is configured
+   * Check if extraction API key is configured (deprecated, uses unified AI key)
    */
   public hasExtractionApiKey(): boolean {
     const config = this.loadConfig();
-    return !!(config.extractionApiKey && config.extractionApiKey.trim().length > 0);
+    return !!(config.aiApiKey && config.aiApiKey.trim().length > 0);
   }
 
   /**
-   * Check if solution API key is configured
+   * Check if solution API key is configured (deprecated, uses unified AI key)
    */
   public hasSolutionApiKey(): boolean {
     const config = this.loadConfig();
-    return !!(config.solutionApiKey && config.solutionApiKey.trim().length > 0);
+    return !!(config.aiApiKey && config.aiApiKey.trim().length > 0);
   }
 
   /**
-   * Check if debugging API key is configured
+   * Check if debugging API key is configured (deprecated, uses unified AI key)
    */
   public hasDebuggingApiKey(): boolean {
     const config = this.loadConfig();
-    return !!(config.debuggingApiKey && config.debuggingApiKey.trim().length > 0);
+    return !!(config.aiApiKey && config.aiApiKey.trim().length > 0);
   }
 
   /**

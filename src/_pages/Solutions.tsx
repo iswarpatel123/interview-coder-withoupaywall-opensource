@@ -35,11 +35,13 @@ const formatCodeContent = (content: any): string => {
 export const ContentSection = ({
   title,
   content,
-  isLoading
+  isLoading,
+  backgroundColor
 }: {
   title: string
   content: React.ReactNode
   isLoading: boolean
+  backgroundColor?: string
 }) => (
   <div className="space-y-2">
     <h2 className="text-[13px] font-medium text-white tracking-wide">
@@ -52,7 +54,7 @@ export const ContentSection = ({
         </p>
       </div>
     ) : (
-      <div className="text-[13px] leading-[1.4] text-gray-100 max-w-[600px]">
+      <div className={`text-[13px] leading-[1.4] text-gray-100 max-w-[600px] ${backgroundColor || ''}`} style={backgroundColor ? { backgroundColor: "rgba(22, 27, 34, 0.5)" } : {}}>
         {content}
       </div>
     )}
@@ -216,6 +218,13 @@ const Solutions: React.FC<SolutionsProps> = ({
   const [tooltipHeight, setTooltipHeight] = useState(0)
 
   const [isResetting, setIsResetting] = useState(false)
+
+  // Debug thoughtsData
+  useEffect(() => {
+    if (thoughtsData) {
+      console.log("Thoughts data received:", thoughtsData);
+    }
+  }, [thoughtsData])
 
   interface Screenshot {
     id: string
@@ -578,26 +587,83 @@ const Solutions: React.FC<SolutionsProps> = ({
 
                   {solutionData && (
                     <>
-                      <ContentSection
+<ContentSection
                         title={`My Thoughts (${COMMAND_KEY} + Arrow keys to scroll)`}
                         content={
                           thoughtsData && (
-                            <div className="space-y-3">
-                              <div className="space-y-1">
-                                {thoughtsData.map((thought, index) => (
-                                  <div
-                                    key={index}
-                                    className="flex items-start gap-2"
-                                  >
-                                    <div className="w-1 h-1 rounded-full bg-blue-400/80 mt-2 shrink-0" />
-                                    <div>{thought}</div>
-                                  </div>
-                                ))}
-                              </div>
+                            <div className="space-y-6">
+                              {(() => {
+                                // Group thoughts by section
+                                const groupedThoughts: { [key: string]: string[] } = {
+                                  'QUESTIONS TO ASK': [],
+                                  'SOLUTION APPROACHES': [],
+                                  'WALKTHROUGH': [],
+                                  'EDGE CASES': []
+                                };
+                                
+                                thoughtsData.forEach((thought, index) => {
+                                  // Check if thought has section prefix
+                                  const sectionMatch = thought.match(/^\[([^\]]+)\]\s*(.*)$/);
+                                  if (sectionMatch) {
+                                    const section = sectionMatch[1];
+                                    const content = sectionMatch[2].trim();
+                                    if (groupedThoughts[section]) {
+                                      groupedThoughts[section].push(content);
+                                    }
+                                  } else {
+                                    // Fallback: categorize using old logic
+                                    let category = "General";
+                                    const lowerThought = thought.toLowerCase();
+                                    
+                                    if (lowerThought.includes("should") || lowerThought.includes("can") || lowerThought.includes("what") || lowerThought.includes("are there") || lowerThought.includes("question") || lowerThought.includes("ask") || lowerThought.includes("clarify")) {
+                                      category = 'QUESTIONS TO ASK';
+                                    } else if (lowerThought.includes("brute force") || lowerThought.includes("optimal") || lowerThought.includes("approach") || lowerThought.includes("strategy") || lowerThought.includes("method")) {
+                                      category = 'SOLUTION APPROACHES';
+                                    } else if (lowerThought.includes("initialize") || lowerThought.includes("expand") || lowerThought.includes("contract") || lowerThought.includes("update") || lowerThought.includes("step") || lowerThought.includes("walk") || lowerThought.includes("process") || lowerThought.includes("algorithm")) {
+                                      category = 'WALKTHROUGH';
+                                    } else if (lowerThought.includes("empty") || lowerThought.includes("longer") || lowerThought.includes("duplicate") || lowerThought.includes("no valid") || lowerThought.includes("identical") || lowerThought.includes("multiple") || lowerThought.includes("edge") || lowerThought.includes("corner") || lowerThought.includes("boundary")) {
+                                      category = 'EDGE CASES';
+                                    }
+                                    
+                                    groupedThoughts[category].push(thought);
+                                  }
+                                });
+                                
+                                // Define section colors and titles
+                                const sectionConfig = {
+                                  'QUESTIONS TO ASK': { color: 'text-yellow-300', title: 'Questions to Ask' },
+                                  'SOLUTION APPROACHES': { color: 'text-green-300', title: 'Solution Approaches' },
+                                  'WALKTHROUGH': { color: 'text-blue-300', title: 'Solution Walkthrough' },
+                                  'EDGE CASES': { color: 'text-red-300', title: 'Edge Cases' },
+                                  'General': { color: 'text-gray-300', title: 'General' }
+                                };
+                                
+                                return Object.entries(groupedThoughts).map(([section, thoughts]) => {
+                                  if (thoughts.length === 0) return null;
+                                  
+                                  const config = sectionConfig[section as keyof typeof sectionConfig] || sectionConfig['General'];
+                                  
+                                  return (
+                                    <div key={section} className="space-y-3">
+                                      <div className={`text-sm font-semibold ${config.color} border-b border-gray-600 pb-1`}>
+                                        {config.title}
+                                      </div>
+                                      <div className="text-gray-100 text-xs whitespace-pre-wrap">
+                                        {thoughts.map((thought, thoughtIndex) => (
+                                          <div key={thoughtIndex} className="mb-2">
+                                            {thought}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                }).filter(Boolean);
+                              })()}
                             </div>
                           )
                         }
                         isLoading={!thoughtsData}
+                        backgroundColor="rounded-md p-3 font-mono text-xs"
                       />
 
                       <SolutionSection
