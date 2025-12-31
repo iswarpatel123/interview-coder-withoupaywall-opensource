@@ -6,10 +6,14 @@ import path from "node:path"
 import { OpenAI } from "openai"
 
 interface Config {
-  apiKey: string;
-  apiProvider: "openai" | "gemini" | "anthropic";  // Added provider selection
+  extractionApiKey: string;
+  extractionEndpoint: string;
   extractionModel: string;
+  solutionApiKey: string;
+  solutionEndpoint: string;
   solutionModel: string;
+  debuggingApiKey: string;
+  debuggingEndpoint: string;
   debuggingModel: string;
   language: string;
   opacity: number;
@@ -18,11 +22,15 @@ interface Config {
 export class ConfigHelper extends EventEmitter {
   private configPath: string;
   private defaultConfig: Config = {
-    apiKey: "",
-    apiProvider: "gemini", // Default to Gemini
-    extractionModel: "gemini-flash-latest", // Default to Flash for faster responses
-    solutionModel: "gemini-flash-latest",
-    debuggingModel: "gemini-flash-latest",
+    extractionApiKey: "",
+    extractionEndpoint: "https://api.openai.com/v1",
+    extractionModel: "gpt-4o",
+    solutionApiKey: "",
+    solutionEndpoint: "https://api.openai.com/v1",
+    solutionModel: "gpt-4o",
+    debuggingApiKey: "",
+    debuggingEndpoint: "https://api.openai.com/v1",
+    debuggingModel: "gpt-4o",
     language: "python",
     opacity: 1.0
   };
@@ -55,60 +63,11 @@ export class ConfigHelper extends EventEmitter {
     }
   }
 
-  /**
-   * Validate and sanitize model selection to ensure only allowed models are used
-   */
-  private sanitizeModelSelection(model: string, provider: "openai" | "gemini" | "anthropic"): string {
-    if (provider === "openai") {
-      // Only allow gpt-4o and gpt-4o-mini for OpenAI
-      const allowedModels = ['gpt-4o', 'gpt-4o-mini'];
-      if (!allowedModels.includes(model)) {
-        console.warn(`Invalid OpenAI model specified: ${model}. Using default model: gpt-4o`);
-        return 'gpt-4o';
-      }
-      return model;
-    } else if (provider === "gemini") {
-      // Only allow gemini-2.5-pro and gemini-flash-latest for Gemini
-      const allowedModels = ['gemini-2.5-pro', 'gemini-flash-latest', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'];
-      if (!allowedModels.includes(model)) {
-        console.warn(`Invalid Gemini model specified: ${model}. Using default model: gemini-flash-latest`);
-        return 'gemini-flash-latest'; // Changed default to flash
-      }
-      return model;
-    } else if (provider === "anthropic") {
-      // Only allow Claude models
-      const allowedModels = ['claude-sonnet-4-20250514', 'claude-3-7-sonnet-20250219', 'claude-4-opus-20250514'];
-      if (!allowedModels.includes(model)) {
-        console.warn(`Invalid Anthropic model specified: ${model}. Using default model: claude-sonnet-4-20250514`);
-        return 'claude-sonnet-4-20250514';
-      }
-      return model;
-    }
-    // Default fallback
-    return model;
-  }
-
   public loadConfig(): Config {
     try {
       if (fs.existsSync(this.configPath)) {
         const configData = fs.readFileSync(this.configPath, 'utf8');
         const config = JSON.parse(configData);
-
-        // Ensure apiProvider is a valid value
-        if (config.apiProvider !== "openai" && config.apiProvider !== "gemini" && config.apiProvider !== "anthropic") {
-          config.apiProvider = "gemini"; // Default to Gemini if invalid
-        }
-
-        // Sanitize model selections to ensure only allowed models are used
-        if (config.extractionModel) {
-          config.extractionModel = this.sanitizeModelSelection(config.extractionModel, config.apiProvider);
-        }
-        if (config.solutionModel) {
-          config.solutionModel = this.sanitizeModelSelection(config.solutionModel, config.apiProvider);
-        }
-        if (config.debuggingModel) {
-          config.debuggingModel = this.sanitizeModelSelection(config.debuggingModel, config.apiProvider);
-        }
 
         return {
           ...this.defaultConfig,
@@ -148,64 +107,11 @@ export class ConfigHelper extends EventEmitter {
   public updateConfig(updates: Partial<Config>): Config {
     try {
       const currentConfig = this.loadConfig();
-      let provider = updates.apiProvider || currentConfig.apiProvider;
-
-      // Auto-detect provider based on API key format if a new key is provided
-      if (updates.apiKey && !updates.apiProvider) {
-        // If API key starts with "sk-", it's likely an OpenAI key
-        if (updates.apiKey.trim().startsWith('sk-')) {
-          provider = "openai";
-          console.log("Auto-detected OpenAI API key format");
-        } else if (updates.apiKey.trim().startsWith('sk-ant-')) {
-          provider = "anthropic";
-          console.log("Auto-detected Anthropic API key format");
-        } else {
-          provider = "gemini";
-          console.log("Using Gemini API key format (default)");
-        }
-
-        // Update the provider in the updates object
-        updates.apiProvider = provider;
-      }
-
-      // If provider is changing, reset models to the default for that provider
-      if (updates.apiProvider && updates.apiProvider !== currentConfig.apiProvider) {
-        if (updates.apiProvider === "openai") {
-          updates.extractionModel = "gpt-4o";
-          updates.solutionModel = "gpt-4o";
-          updates.debuggingModel = "gpt-4o";
-        } else if (updates.apiProvider === "anthropic") {
-          updates.extractionModel = "claude-sonnet-4-20250514";
-          updates.solutionModel = "claude-sonnet-4-20250514";
-          updates.debuggingModel = "claude-sonnet-4-20250514";
-        } else {
-          updates.extractionModel = "gemini-flash-latest";
-          updates.solutionModel = "gemini-flash-latest";
-          updates.debuggingModel = "gemini-flash-latest";
-        }
-      }
-
-      // Sanitize model selections in the updates
-      if (updates.extractionModel) {
-        updates.extractionModel = this.sanitizeModelSelection(updates.extractionModel, provider);
-      }
-      if (updates.solutionModel) {
-        updates.solutionModel = this.sanitizeModelSelection(updates.solutionModel, provider);
-      }
-      if (updates.debuggingModel) {
-        updates.debuggingModel = this.sanitizeModelSelection(updates.debuggingModel, provider);
-      }
-
       const newConfig = { ...currentConfig, ...updates };
       this.saveConfig(newConfig);
 
-      // Only emit update event for changes other than opacity
-      // This prevents re-initializing the AI client when only opacity changes
-      if (updates.apiKey !== undefined || updates.apiProvider !== undefined ||
-        updates.extractionModel !== undefined || updates.solutionModel !== undefined ||
-        updates.debuggingModel !== undefined || updates.language !== undefined) {
-        this.emit('config-updated', newConfig);
-      }
+      // Emit update event for config changes
+      this.emit('config-updated', newConfig);
 
       return newConfig;
     } catch (error) {
@@ -215,42 +121,74 @@ export class ConfigHelper extends EventEmitter {
   }
 
   /**
-   * Check if the API key is configured
+   * Check if any API key is configured
    */
   public hasApiKey(): boolean {
     const config = this.loadConfig();
-    return !!config.apiKey && config.apiKey.trim().length > 0;
+    return !!(config.extractionApiKey && config.extractionApiKey.trim().length > 0) ||
+           !!(config.solutionApiKey && config.solutionApiKey.trim().length > 0) ||
+           !!(config.debuggingApiKey && config.debuggingApiKey.trim().length > 0);
   }
 
   /**
-   * Validate the API key format
+   * Check if extraction API key is configured
    */
-  public isValidApiKeyFormat(apiKey: string, provider?: "openai" | "gemini" | "anthropic"): boolean {
-    // If provider is not specified, attempt to auto-detect
-    if (!provider) {
-      if (apiKey.trim().startsWith('sk-')) {
-        if (apiKey.trim().startsWith('sk-ant-')) {
-          provider = "anthropic";
-        } else {
-          provider = "openai";
-        }
-      } else {
-        provider = "gemini";
+  public hasExtractionApiKey(): boolean {
+    const config = this.loadConfig();
+    return !!(config.extractionApiKey && config.extractionApiKey.trim().length > 0);
+  }
+
+  /**
+   * Check if solution API key is configured
+   */
+  public hasSolutionApiKey(): boolean {
+    const config = this.loadConfig();
+    return !!(config.solutionApiKey && config.solutionApiKey.trim().length > 0);
+  }
+
+  /**
+   * Check if debugging API key is configured
+   */
+  public hasDebuggingApiKey(): boolean {
+    const config = this.loadConfig();
+    return !!(config.debuggingApiKey && config.debuggingApiKey.trim().length > 0);
+  }
+
+  /**
+   * Validate API key format (basic validation)
+   */
+  public isValidApiKeyFormat(apiKey: string): boolean {
+    // Basic format validation for OpenAI API keys
+    return /^sk-[a-zA-Z0-9]{32,}$/.test(apiKey.trim());
+  }
+
+  /**
+   * Test API key with OpenAI
+   */
+  public async testApiKey(apiKey: string): Promise<{ valid: boolean, error?: string }> {
+    try {
+      const openai = new OpenAI({ apiKey });
+      // Make a simple API call to test the key
+      await openai.models.list();
+      return { valid: true };
+    } catch (error: any) {
+      console.error('OpenAI API key test failed:', error);
+
+      // Determine the specific error type for better error messages
+      let errorMessage = 'Unknown error validating OpenAI API key';
+
+      if (error.status === 401) {
+        errorMessage = 'Invalid API key. Please check your OpenAI key and try again.';
+      } else if (error.status === 429) {
+        errorMessage = 'Rate limit exceeded. Your OpenAI API key has reached its request limit or has insufficient quota.';
+      } else if (error.status === 500) {
+        errorMessage = 'OpenAI server error. Please try again later.';
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`;
       }
-    }
 
-    if (provider === "openai") {
-      // Basic format validation for OpenAI API keys
-      return /^sk-[a-zA-Z0-9]{32,}$/.test(apiKey.trim());
-    } else if (provider === "gemini") {
-      // Basic format validation for Gemini API keys (usually alphanumeric with no specific prefix)
-      return apiKey.trim().length >= 10; // Assuming Gemini keys are at least 10 chars
-    } else if (provider === "anthropic") {
-      // Basic format validation for Anthropic API keys
-      return /^sk-ant-[a-zA-Z0-9]{32,}$/.test(apiKey.trim());
+      return { valid: false, error: errorMessage };
     }
-
-    return false;
   }
 
   /**
@@ -283,116 +221,6 @@ export class ConfigHelper extends EventEmitter {
    */
   public setLanguage(language: string): void {
     this.updateConfig({ language });
-  }
-
-  /**
-   * Test API key with the selected provider
-   */
-  public async testApiKey(apiKey: string, provider?: "openai" | "gemini" | "anthropic"): Promise<{ valid: boolean, error?: string }> {
-    // Auto-detect provider based on key format if not specified
-    if (!provider) {
-      if (apiKey.trim().startsWith('sk-')) {
-        if (apiKey.trim().startsWith('sk-ant-')) {
-          provider = "anthropic";
-          console.log("Auto-detected Anthropic API key format for testing");
-        } else {
-          provider = "openai";
-          console.log("Auto-detected OpenAI API key format for testing");
-        }
-      } else {
-        provider = "gemini";
-        console.log("Using Gemini API key format for testing (default)");
-      }
-    }
-
-    if (provider === "openai") {
-      return this.testOpenAIKey(apiKey);
-    } else if (provider === "gemini") {
-      return this.testGeminiKey(apiKey);
-    } else if (provider === "anthropic") {
-      return this.testAnthropicKey(apiKey);
-    }
-
-    return { valid: false, error: "Unknown API provider" };
-  }
-
-  /**
-   * Test OpenAI API key
-   */
-  private async testOpenAIKey(apiKey: string): Promise<{ valid: boolean, error?: string }> {
-    try {
-      const openai = new OpenAI({ apiKey });
-      // Make a simple API call to test the key
-      await openai.models.list();
-      return { valid: true };
-    } catch (error: any) {
-      console.error('OpenAI API key test failed:', error);
-
-      // Determine the specific error type for better error messages
-      let errorMessage = 'Unknown error validating OpenAI API key';
-
-      if (error.status === 401) {
-        errorMessage = 'Invalid API key. Please check your OpenAI key and try again.';
-      } else if (error.status === 429) {
-        errorMessage = 'Rate limit exceeded. Your OpenAI API key has reached its request limit or has insufficient quota.';
-      } else if (error.status === 500) {
-        errorMessage = 'OpenAI server error. Please try again later.';
-      } else if (error.message) {
-        errorMessage = `Error: ${error.message}`;
-      }
-
-      return { valid: false, error: errorMessage };
-    }
-  }
-
-  /**
-   * Test Gemini API key
-   * Note: This is a simplified implementation since we don't have the actual Gemini client
-   */
-  private async testGeminiKey(apiKey: string): Promise<{ valid: boolean, error?: string }> {
-    try {
-      // For now, we'll just do a basic check to ensure the key exists and has valid format
-      // In production, you would connect to the Gemini API and validate the key
-      if (apiKey && apiKey.trim().length >= 20) {
-        // Here you would actually validate the key with a Gemini API call
-        return { valid: true };
-      }
-      return { valid: false, error: 'Invalid Gemini API key format.' };
-    } catch (error: any) {
-      console.error('Gemini API key test failed:', error);
-      let errorMessage = 'Unknown error validating Gemini API key';
-
-      if (error.message) {
-        errorMessage = `Error: ${error.message}`;
-      }
-
-      return { valid: false, error: errorMessage };
-    }
-  }
-
-  /**
-   * Test Anthropic API key
-   * Note: This is a simplified implementation since we don't have the actual Anthropic client
-   */
-  private async testAnthropicKey(apiKey: string): Promise<{ valid: boolean, error?: string }> {
-    try {
-      // For now, we'll just do a basic check to ensure the key exists and has valid format
-      // In production, you would connect to the Anthropic API and validate the key
-      if (apiKey && /^sk-ant-[a-zA-Z0-9]{32,}$/.test(apiKey.trim())) {
-        // Here you would actually validate the key with an Anthropic API call
-        return { valid: true };
-      }
-      return { valid: false, error: 'Invalid Anthropic API key format.' };
-    } catch (error: any) {
-      console.error('Anthropic API key test failed:', error);
-      let errorMessage = 'Unknown error validating Anthropic API key';
-
-      if (error.message) {
-        errorMessage = `Error: ${error.message}`;
-      }
-
-      return { valid: false, error: errorMessage };
-    }
   }
 }
 
