@@ -110,8 +110,8 @@ const SolutionCommands: React.FC<SolutionCommandsProps> = ({
               >
                 <span className="text-[11px] leading-none truncate">
                   {extraScreenshots.length === 0
-                    ? "Screenshot your code"
-                    : "Screenshot"}
+                    ? "Capture more context"
+                    : "Capture"}
                 </span>
                 <div className="flex gap-1">
                   <button className="bg-white/10 rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
@@ -151,7 +151,7 @@ const SolutionCommands: React.FC<SolutionCommandsProps> = ({
                     }
                   }}
                 >
-                  <span className="text-[11px] leading-none">Debug</span>
+                  <span className="text-[11px] leading-none">Refine Design</span>
                   <div className="flex gap-1">
                     <button className="bg-white/10 rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
                       {COMMAND_KEY}
@@ -319,8 +319,7 @@ const SolutionCommands: React.FC<SolutionCommandsProps> = ({
                               </div>
                             </div>
                             <p className="text-[10px] leading-relaxed text-white/70 truncate mt-1">
-                              Capture additional parts of the question or your
-                              solution for debugging help.
+                              Capture additional context or constraints to refine the design.
                             </p>
                           </div>
 
@@ -356,7 +355,7 @@ const SolutionCommands: React.FC<SolutionCommandsProps> = ({
                               }}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="truncate">Debug</span>
+                                <span className="truncate">Refine Design</span>
                                 <div className="flex gap-1 flex-shrink-0">
                                   <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] leading-none">
                                     {COMMAND_KEY}
@@ -367,8 +366,7 @@ const SolutionCommands: React.FC<SolutionCommandsProps> = ({
                                 </div>
                               </div>
                               <p className="text-[10px] leading-relaxed text-white/70 truncate mt-1">
-                                Generate new solutions based on all previous and
-                                newly added screenshots.
+                                Refine the system design using the latest screenshots and notes.
                               </p>
                             </div>
                           )}

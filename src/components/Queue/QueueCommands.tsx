@@ -150,7 +150,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
             </div>
           </div>
 
-          {/* Solve Command */}
+          {/* Design Command */}
           {screenshotCount > 0 && (
             <div
               className={`flex flex-col cursor-pointer rounded px-2 py-1.5 hover:bg-white/10 transition-colors ${
@@ -175,7 +175,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
               }}
             >
               <div className="flex items-center justify-between">
-                <span className="text-[11px] leading-none">Solve </span>
+                <span className="text-[11px] leading-none">Design</span>
                 <div className="flex gap-1 ml-2">
                   <button className="bg-white/10 rounded-md px-1.5 py-1 text-[11px] leading-none text-white/70">
                     {COMMAND_KEY}
@@ -315,7 +315,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
                         </p>
                       </div>
 
-                      {/* Solve Command */}
+                      {/* Design Command */}
                       <div
                         className={`cursor-pointer rounded px-2 py-1.5 hover:bg-white/10 transition-colors ${
                           screenshotCount > 0
@@ -353,7 +353,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
                         }}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="truncate">Solve</span>
+                          <span className="truncate">Design</span>
                           <div className="flex gap-1 flex-shrink-0">
                             <span className="bg-white/20 px-1.5 py-0.5 rounded text-[10px] leading-none">
                               {COMMAND_KEY}
@@ -365,8 +365,8 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
                         </div>
                         <p className="text-[10px] leading-relaxed text-white/70 truncate mt-1">
                           {screenshotCount > 0
-                            ? "Generate a solution based on the current problem."
-                            : "Take a screenshot first to generate a solution."}
+                            ? "Generate a system design from the captured context."
+                            : "Take a screenshot first to draft a system design."}
                         </p>
                       </div>
                       

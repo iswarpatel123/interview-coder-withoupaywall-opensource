@@ -350,7 +350,7 @@ export class ProcessingHelper {
 
       if (mainWindow) {
         mainWindow.webContents.send("processing-status", {
-          message: "Analyzing screenshots and generating solution...",
+          message: "Analyzing requirements and drafting a system design...",
           progress: 20
         });
       }
@@ -369,55 +369,62 @@ export class ProcessingHelper {
       const messages = [
         {
           role: "system" as const,
-          content: `You are a coding interview assistant. Analyze the screenshots and provide a comprehensive solution in ${language}.`
+          content: `You are a system design interview assistant. Your job is to turn partial requirements into a clear, defensible system design. Ask clarifying questions, propose API and data models, and emphasize scalability, reliability, and fault tolerance. Always provide a concise text-based architecture diagram (no images). Keep language crisp and skimmable.`
         },
         {
           role: "user" as const,
           content: [
             {
               type: "text" as const,
-              text: `Analyze the coding problem from these screenshots and provide a complete solution in ${language}. 
+              text: `Extract the system requirements from these screenshots and produce a system design. If key details are missing, surface clarifying questions before finalizing assumptions.
 
-Your response must include:
+Return output using this exact structure:
+---DESIGN_DOC---
+\`\`\`markdown
+# System Goals
+- bullets
 
-1. CODE SOLUTION:
-   - A clean, optimized implementation
-   - Follow the solution stub structure if provided
-   - Comments in code
+## Architecture Overview
+- components and interactions
 
-2. THOUGHTS / DISCUSSION:
-   - Precise followup questions to ask the interviewer
-   - Solution approach(es). Brute force (if available for this case) & optimal. Explain in detail, which interviewee can read and understand and explain to the interviewer
-   - Solution walkthrough with the simplest case
-   - Edge cases to consider
+## API Design
+- list endpoints or contracts with method, path, request, response, and notes
 
-3. COMPLEXITY ANALYSIS:
-   - Time complexity with detailed explanation (at least 2 sentences)
-   - Space complexity with detailed explanation (at least 2 sentences)
+## Data Model
+- tables/collections with key fields and indexes
 
-For complexity explanations, please be thorough. For example: "Time complexity: O(n) because we iterate through the array only once. This is optimal as we need to examine each element at least once to find the solution." or "Space complexity: O(n) because in the worst case, we store all elements in the hashmap. The additional space scales linearly with the input size."
-Your solution should be efficient and handle edge cases.
+## Scaling & Performance
+- read/write paths, partitions/sharding, caching, queues, backpressure
 
-Format your response as:
----CODE---
-\`\`\`${language}
-{your code here}
+## Reliability & Fault Tolerance
+- redundancy, failover, retries, idempotency, DR/RPO/RTO
+
+## Security & Privacy
+- authN/Z, data protection, PII handling
+
+## Request Flow (step-by-step)
+- ordered bullets
+
+## Text Design Diagram
+- plain-text box/arrow diagram; no images
 \`\`\`
----CODE---
+---DESIGN_DOC---
 
----THOUGHTS---
+---STRUCTURED_GUIDE---
 {
-  "questions_to_ask": ["question 1", "question 2"],
-  "solution_approaches": ["approach 1 description", "approach 2 description"],
-  "walkthrough": ["step 1", "step 2", "step 3"],
-  "edge_cases": ["edge case 1", "edge case 2"]
+  "clarifying_questions": ["question"],
+  "assumptions": ["assumption"],
+  "api_design": ["endpoint summary"],
+  "data_model": ["entity summary"],
+  "scaling_and_performance": ["note"],
+  "reliability_fault_tolerance": ["note"],
+  "security_privacy": ["note"],
+  "request_flow": ["step"],
+  "text_diagram": "text diagram here"
 }
----THOUGHTS---
+---STRUCTURED_GUIDE---
 
----COMPLEXITY---
-Time complexity: {O(notation) - detailed explanation}
-Space complexity: {O(notation) - detailed explanation}
----COMPLEXITY---`
+Use the provided language preference for any sample payloads: ${language}. Keep the tone concise and interview-ready.`
             },
             ...imageDataList.map(data => ({
               type: "image_url" as const,
@@ -438,79 +445,56 @@ Space complexity: {O(notation) - detailed explanation}
       let problemInfo: any = null;
       let code = "";
       let thoughts: string[] = [];
-      let timeComplexity = "";
-      let spaceComplexity = "";
+      let timeComplexity = "Not applicable for system design";
+      let spaceComplexity = "Not applicable for system design";
 
-      const codeMatch = responseText.match(/---CODE---([\s\S]*?)---CODE---/);
-      if (codeMatch) {
-        const innerCodeMatch = codeMatch[1].match(/```(?:\w+)?\s*([\s\S]*?)```/);
-        code = innerCodeMatch ? innerCodeMatch[1].trim() : codeMatch[1].trim();
+      const designMatch = responseText.match(/---DESIGN_DOC---([\s\S]*?)---DESIGN_DOC---/);
+      if (designMatch) {
+        const innerMatch = designMatch[1].match(/```(?:markdown)?\s*([\s\S]*?)```/);
+        code = innerMatch ? innerMatch[1].trim() : designMatch[1].trim();
       }
 
-      const thoughtsMatch = responseText.match(/---THOUGHTS---([\s\S]*?)---THOUGHTS---/);
-      if (thoughtsMatch) {
+      const guideMatch = responseText.match(/---STRUCTURED_GUIDE---([\s\S]*?)---STRUCTURED_GUIDE---/);
+      if (guideMatch) {
         try {
-          // Try to parse as JSON
-          const thoughtsJson = JSON.parse(thoughtsMatch[1].trim());
+          const guideJson = JSON.parse(guideMatch[1].trim());
+          const sectionMap: Record<string, string> = {
+            clarifying_questions: "CLARIFYING QUESTIONS",
+            assumptions: "ASSUMPTIONS",
+            api_design: "API DESIGN",
+            data_model: "DATA MODEL",
+            scaling_and_performance: "SCALING & PERFORMANCE",
+            reliability_fault_tolerance: "RELIABILITY & FAULT TOLERANCE",
+            security_privacy: "SECURITY & PRIVACY",
+            request_flow: "REQUEST FLOW",
+            text_diagram: "TEXT DIAGRAM"
+          };
 
-          // Add each section as a structured thought
-          if (thoughtsJson.questions_to_ask && Array.isArray(thoughtsJson.questions_to_ask)) {
-            thoughtsJson.questions_to_ask.forEach((question: string) => {
-              thoughts.push(`[QUESTIONS TO ASK] ${question}`);
-            });
-          }
+          Object.entries(sectionMap).forEach(([key, label]) => {
+            const value = guideJson[key];
+            if (Array.isArray(value)) {
+              value.forEach((item: string) => thoughts.push(`[${label}] ${item}`));
+            } else if (typeof value === "string" && value.trim()) {
+              thoughts.push(`[${label}] ${value.trim()}`);
+            }
+          });
 
-          if (thoughtsJson.solution_approaches && Array.isArray(thoughtsJson.solution_approaches)) {
-            thoughtsJson.solution_approaches.forEach((approach: string) => {
-              thoughts.push(`[SOLUTION APPROACHES] ${approach}`);
-            });
-          }
-
-          if (thoughtsJson.walkthrough) {
-            thoughts.push(`[WALKTHROUGH] ${thoughtsJson.walkthrough}`);
-          }
-
-          if (thoughtsJson.edge_cases && Array.isArray(thoughtsJson.edge_cases)) {
-            thoughtsJson.edge_cases.forEach((edgeCase: string) => {
-              thoughts.push(`[EDGE CASES] ${edgeCase}`);
-            });
-          }
-
-          console.log("JSON parsing successful. Thoughts count:", thoughts.length);
+          console.log("Structured guide parsed. Thoughts count:", thoughts.length);
         } catch (e) {
-          // Fallback to text parsing if JSON parsing fails
-          console.log("JSON parsing failed, using fallback text parsing");
-          const thoughtsContent = thoughtsMatch[1].trim();
-
-          // Simple text-based parsing as fallback
-          const sections = [
-            { name: 'QUESTIONS TO ASK', regex: /- (.*)/g },
-            { name: 'SOLUTION APPROACHES', regex: /- (.*)/g },
-            { name: 'WALKTHROUGH', regex: /- (.*)/g },
-            { name: 'EDGE CASES', regex: /- (.*)/g }
-          ];
-
-          thoughts.push(`[SOLUTION APPROACHES] ${thoughtsContent}`);
+          console.log("Structured guide parsing failed, using raw block");
+          thoughts.push(`[API DESIGN] ${guideMatch[1].trim()}`);
         }
       }
 
-      const complexityMatch = responseText.match(/---COMPLEXITY---([\s\S]*?)---COMPLEXITY---/);
-      if (complexityMatch) {
-        const timeMatch = complexityMatch[1].match(/Time complexity:?\s*([^\n]+)/i);
-        if (timeMatch) timeComplexity = timeMatch[1].trim();
-
-        const spaceMatch = complexityMatch[1].match(/Space complexity:?\s*([^\n]+)/i);
-        if (spaceMatch) spaceComplexity = spaceMatch[1].trim();
+      if (!code) {
+        code = "// No design document returned. Please retry.";
       }
-
-      if (!timeComplexity) timeComplexity = "O(n) - Linear time complexity";
-      if (!spaceComplexity) spaceComplexity = "O(n) - Linear space complexity";
 
       this.deps.setProblemInfo(problemInfo);
 
       if (mainWindow) {
         mainWindow.webContents.send("processing-status", {
-          message: "Solution generated successfully",
+          message: "System design generated successfully",
           progress: 100
         });
 
@@ -611,42 +595,15 @@ Space complexity: {O(notation) - detailed explanation}
       const messages = [
         {
           role: "system" as const,
-          content: `You are a coding interview assistant helping debug and improve solutions. Analyze these screenshots which include either error messages, incorrect outputs, or test cases, and provide detailed debugging help.
-
-Your response MUST follow this exact structure with these section headers (use ### for headers):
-### Issues Identified
-- List each issue as a bullet point with clear explanation
-
-### Specific Improvements and Corrections
-- List specific code changes needed as bullet points
-
-### Optimizations
-- List any performance optimizations if applicable
-
-### Explanation of Changes Needed
-Here provide a clear explanation of why the changes are needed
-
-### Key Points
-- Summary bullet points of the most important takeaways
-
-If you include code examples, use proper markdown code blocks with language specification (e.g. \`\`\`java).`
+          content: `You are a system design assistant iterating on a design. Given new context (screenshots may include notes, constraints, traffic changes), refine the design for clarity, scalability, and reliability.`
         },
         {
           role: "user" as const,
           content: [
             {
               type: "text" as const,
-              text: `I need help with debugging or improving my solution in ${language}. 
-${problemInfo ? `The problem I'm solving is: "${problemInfo.problem_statement}"
-Constraints: ${problemInfo.constraints || "No specific constraints provided."}
-Solution Stub: ${problemInfo.solution_stub || "No solution stub provided."}
-Notes: ${problemInfo.notes || "No additional notes provided."}` : ''}
-
-I need help with debugging or improving my solution. Here are screenshots of my code, the errors or test cases. Please provide a detailed analysis with:
-1. What issues you found in my code
-2. Specific improvements and corrections
-3. Any optimizations that would make the solution better
-4. A clear explanation of the changes needed`
+              text: `Refine the system design with the additional context in these screenshots.
+Summarize changes, highlight new risks, and update the architecture, API design, data model, scaling, and fault tolerance plans. Provide an updated text-only design diagram.`
             },
             ...imageDataList.map(data => ({
               type: "image_url" as const,
@@ -678,7 +635,7 @@ I need help with debugging or improving my solution. Here are screenshots of my 
         });
       }
 
-      let extractedCode = "// Debug mode - see analysis below";
+      let extractedCode = "// Refined design - see analysis below";
       const codeMatch = debugContent.match(/```(?:[a-zA-Z]+)?([\s\S]*?)```/);
       if (codeMatch && codeMatch[1]) {
         extractedCode = codeMatch[1].trim();
@@ -697,14 +654,14 @@ I need help with debugging or improving my solution. Here are screenshots of my 
       const bulletPoints = formattedDebugContent.match(/(?:^|\n)[ ]*(?:[-*•]|\d+\.)[ ]+([^\n]+)/g);
       const thoughts = bulletPoints
         ? bulletPoints.map((point: string) => point.replace(/^[ ]*(?:[-*•]|\d+\.)[ ]+/, '').trim()).slice(0, 5)
-        : ["Debug analysis based on your screenshots"];
+        : ["Refined design summary based on your screenshots"];
 
       const response = {
         code: extractedCode,
         debug_analysis: formattedDebugContent,
         thoughts: thoughts,
-        time_complexity: "N/A - Debug mode",
-        space_complexity: "N/A - Debug mode"
+        time_complexity: "Not applicable for system design",
+        space_complexity: "Not applicable for system design"
       };
 
       return { success: true, data: response };

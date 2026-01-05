@@ -26,7 +26,7 @@ const CodeSection = ({
       <div className="space-y-1.5">
         <div className="mt-4 flex">
           <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
-            Loading solutions...
+            Loading design update...
           </p>
         </div>
       </div>
@@ -34,7 +34,7 @@ const CodeSection = ({
       <div className="w-full">
         <SyntaxHighlighter
           showLineNumbers
-          language={currentLanguage == "golang" ? "go" : currentLanguage}
+          language={"markdown"}
           style={dracula}
           customStyle={{
             maxWidth: "100%",
@@ -125,7 +125,7 @@ const Debug: React.FC<DebugProps> = ({
         // Store the debug analysis in its own state variable
         setDebugAnalysis(newSolution.debug_analysis);
         // Set code separately for the code section
-        setNewCode(newSolution.code || "// Debug mode - see analysis below");
+        setNewCode(newSolution.code || "// Refined design - see analysis below");
         
         // Process thoughts/analysis points
         if (newSolution.debug_analysis.includes('\n\n')) {
@@ -133,15 +133,15 @@ const Debug: React.FC<DebugProps> = ({
           // Pick first few sections as thoughts
           setThoughtsData(sections.slice(0, 3));
         } else {
-          setThoughtsData(["Debug analysis based on your screenshots"]);
+          setThoughtsData(["Design refinement based on your screenshots"]);
         }
       } else {
         // Fallback to code or default
         setNewCode(newSolution.code || "// No analysis available");
-        setThoughtsData(newSolution.thoughts || ["Debug analysis based on your screenshots"]);
+        setThoughtsData(newSolution.thoughts || ["Design refinement based on your screenshots"]);
       }
-      setTimeComplexityData(newSolution.time_complexity || "N/A - Debug mode")
-      setSpaceComplexityData(newSolution.space_complexity || "N/A - Debug mode")
+      setTimeComplexityData(newSolution.time_complexity || "Not applicable for system design")
+      setSpaceComplexityData(newSolution.space_complexity || "Not applicable for system design")
       setIsProcessing(false)
     }
 
@@ -158,7 +158,7 @@ const Debug: React.FC<DebugProps> = ({
           // Store the debug analysis in its own state variable
           setDebugAnalysis(data.debug_analysis);
           // Set code separately for the code section
-          setNewCode(data.code || "// Debug mode - see analysis below");
+          setNewCode(data.code || "// Refined design - see analysis below");
           
           // Process thoughts/analysis points
           if (data.debug_analysis.includes('\n\n')) {
@@ -177,19 +177,19 @@ const Debug: React.FC<DebugProps> = ({
             if (bulletPoints.length > 0) {
               setThoughtsData(bulletPoints.slice(0, 5));
             } else {
-              setThoughtsData(["Debug analysis based on your screenshots"]);
+              setThoughtsData(["Design refinement based on your screenshots"]);
             }
           } else {
-            setThoughtsData(["Debug analysis based on your screenshots"]);
+            setThoughtsData(["Design refinement based on your screenshots"]);
           }
         } else {
           // Fallback to code or default
           setNewCode(data.code || "// No analysis available");
-          setThoughtsData(data.thoughts || ["Debug analysis based on your screenshots"]);
+          setThoughtsData(data.thoughts || ["Design refinement based on your screenshots"]);
           setDebugAnalysis(null);
         }
-        setTimeComplexityData(data.time_complexity || "N/A - Debug mode");
-        setSpaceComplexityData(data.space_complexity || "N/A - Debug mode");
+        setTimeComplexityData(data.time_complexity || "Not applicable for system design");
+        setSpaceComplexityData(data.space_complexity || "Not applicable for system design");
         
         setIsProcessing(false);
       }),
@@ -200,7 +200,7 @@ const Debug: React.FC<DebugProps> = ({
       window.electronAPI.onDebugError((error: string) => {
         showToast(
           "Processing Failed",
-          "There was an error debugging your code.",
+          "There was an error refining the design.",
           "error"
         )
         setIsProcessing(false)
@@ -309,28 +309,28 @@ const Debug: React.FC<DebugProps> = ({
               isLoading={!thoughtsData}
             />
 
-            {/* Code Section */}
+            {/* Design Draft Section */}
             <CodeSection
-              title="Original Code"
+              title="Current Design Draft"
               code={newCode}
               isLoading={!newCode}
               currentLanguage={currentLanguage}
             />
             
-            {/* Debug Analysis Section */}
+            {/* Design Refinement Section */}
             <div className="space-y-2">
-              <h2 className="text-[13px] font-medium text-white tracking-wide">Analysis & Improvements</h2>
+              <h2 className="text-[13px] font-medium text-white tracking-wide">Refinement Notes</h2>
               {!debugAnalysis ? (
                 <div className="space-y-1.5">
                   <div className="mt-4 flex">
                     <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
-                      Loading debug analysis...
+                      Loading refinement analysis...
                     </p>
                   </div>
                 </div>
               ) : (
                 <div className="w-full bg-black/30 rounded-md p-4 text-[13px] leading-[1.4] text-gray-100 whitespace-pre-wrap overflow-auto max-h-[600px]">
-                  {/* Process the debug analysis text by sections and lines */}
+                  {/* Process the refinement text by sections and lines */}
                   {(() => {
                     // First identify key sections based on common patterns in the debug output
                     const sections = [];

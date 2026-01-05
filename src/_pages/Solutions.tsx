@@ -43,15 +43,15 @@ export const ContentSection = ({
   isLoading: boolean
   backgroundColor?: string
 }) => (
-  <div className="space-y-2">
-    <h2 className="text-[13px] font-medium text-white tracking-wide">
-      {title}
-    </h2>
+          <div className="space-y-2">
+            <h2 className="text-[13px] font-medium text-white tracking-wide">
+              {title}
+            </h2>
     {isLoading ? (
       <div className="mt-4 flex">
-        <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
-          Extracting problem statement...
-        </p>
+            <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
+              Extracting context from screenshots...
+            </p>
       </div>
     ) : (
       <div className={`text-[13px] leading-[1.4] text-gray-100 max-w-[600px] ${backgroundColor || ''}`} style={backgroundColor ? { backgroundColor: "rgba(22, 27, 34, 0.5)" } : {}}>
@@ -91,7 +91,7 @@ const SolutionSection = ({
         <div className="space-y-1.5">
           <div className="mt-4 flex">
             <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
-              Loading solutions...
+              Loading system design...
             </p>
           </div>
         </div>
@@ -105,7 +105,7 @@ const SolutionSection = ({
           </button>
           <SyntaxHighlighter
             showLineNumbers
-            language={currentLanguage == "golang" ? "go" : currentLanguage}
+            language={"markdown"}
             style={dracula}
             customStyle={{
               maxWidth: "100%",
@@ -141,6 +141,10 @@ export const ComplexitySection = ({
       return "Complexity not available";
     }
 
+    if (complexity.toLowerCase().includes("not applicable")) {
+      return complexity;
+    }
+
     const bigORegex = /O\([^)]+\)/i;
     // Return the complexity as is if it already has Big O notation
     if (bigORegex.test(complexity)) {
@@ -156,13 +160,13 @@ export const ComplexitySection = ({
 
   return (
     <div className="space-y-2">
-      <h2 className="text-[13px] font-medium text-white tracking-wide">
-        Complexity
-      </h2>
+          <h2 className="text-[13px] font-medium text-white tracking-wide">
+            Scope & Complexity Notes
+          </h2>
       {isLoading ? (
-        <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
-          Calculating complexity...
-        </p>
+            <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
+              Summarizing complexity notes...
+            </p>
       ) : (
         <div className="space-y-3">
           <div className="text-[13px] leading-[1.4] text-gray-100 bg-white/5 rounded-md p-3">
@@ -536,7 +540,7 @@ const Solutions: React.FC<SolutionsProps> = ({
                   {!solutionData && (
                     <>
                       <ContentSection
-                        title="Problem Statement"
+                        title="Captured Context"
                         content={problemStatementData?.problem_statement}
                         isLoading={!problemStatementData}
                       />
@@ -578,7 +582,7 @@ const Solutions: React.FC<SolutionsProps> = ({
                       {problemStatementData && (
                         <div className="mt-4 flex">
                           <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
-                            Generating solutions...
+                            Drafting system design...
                           </p>
                         </div>
                       )}
@@ -588,61 +592,56 @@ const Solutions: React.FC<SolutionsProps> = ({
                   {solutionData && (
                     <>
 <ContentSection
-                        title={`My Thoughts (${COMMAND_KEY} + Arrow keys to scroll)`}
+                        title={`Design Guide (${COMMAND_KEY} + Arrow keys to scroll)`}
                         content={
                           thoughtsData && (
                             <div className="space-y-6">
                               {(() => {
-                                // Group thoughts by section
                                 const groupedThoughts: { [key: string]: string[] } = {
-                                  'QUESTIONS TO ASK': [],
-                                  'SOLUTION APPROACHES': [],
-                                  'WALKTHROUGH': [],
-                                  'EDGE CASES': []
+                                  'CLARIFYING QUESTIONS': [],
+                                  'ASSUMPTIONS': [],
+                                  'API DESIGN': [],
+                                  'DATA MODEL': [],
+                                  'SCALING & PERFORMANCE': [],
+                                  'RELIABILITY & FAULT TOLERANCE': [],
+                                  'SECURITY & PRIVACY': [],
+                                  'REQUEST FLOW': [],
+                                  'TEXT DIAGRAM': []
                                 };
-                                
-                                thoughtsData.forEach((thought, index) => {
-                                  // Check if thought has section prefix
+
+                                thoughtsData.forEach((thought) => {
                                   const sectionMatch = thought.match(/^\[([^\]]+)\]\s*(.*)$/);
                                   if (sectionMatch) {
                                     const section = sectionMatch[1];
                                     const content = sectionMatch[2].trim();
                                     if (groupedThoughts[section]) {
                                       groupedThoughts[section].push(content);
+                                    } else {
+                                      if (!groupedThoughts['ASSUMPTIONS']) groupedThoughts['ASSUMPTIONS'] = [];
+                                      groupedThoughts['ASSUMPTIONS'].push(thought);
                                     }
                                   } else {
-                                    // Fallback: categorize using old logic
-                                    let category = "General";
-                                    const lowerThought = thought.toLowerCase();
-                                    
-                                    if (lowerThought.includes("should") || lowerThought.includes("can") || lowerThought.includes("what") || lowerThought.includes("are there") || lowerThought.includes("question") || lowerThought.includes("ask") || lowerThought.includes("clarify")) {
-                                      category = 'QUESTIONS TO ASK';
-                                    } else if (lowerThought.includes("brute force") || lowerThought.includes("optimal") || lowerThought.includes("approach") || lowerThought.includes("strategy") || lowerThought.includes("method")) {
-                                      category = 'SOLUTION APPROACHES';
-                                    } else if (lowerThought.includes("initialize") || lowerThought.includes("expand") || lowerThought.includes("contract") || lowerThought.includes("update") || lowerThought.includes("step") || lowerThought.includes("walk") || lowerThought.includes("process") || lowerThought.includes("algorithm")) {
-                                      category = 'WALKTHROUGH';
-                                    } else if (lowerThought.includes("empty") || lowerThought.includes("longer") || lowerThought.includes("duplicate") || lowerThought.includes("no valid") || lowerThought.includes("identical") || lowerThought.includes("multiple") || lowerThought.includes("edge") || lowerThought.includes("corner") || lowerThought.includes("boundary")) {
-                                      category = 'EDGE CASES';
-                                    }
-                                    
-                                    groupedThoughts[category].push(thought);
+                                    if (!groupedThoughts['ASSUMPTIONS']) groupedThoughts['ASSUMPTIONS'] = [];
+                                    groupedThoughts['ASSUMPTIONS'].push(thought);
                                   }
                                 });
-                                
-                                // Define section colors and titles
+
                                 const sectionConfig = {
-                                  'QUESTIONS TO ASK': { color: 'text-yellow-300', title: 'Questions to Ask' },
-                                  'SOLUTION APPROACHES': { color: 'text-green-300', title: 'Solution Approaches' },
-                                  'WALKTHROUGH': { color: 'text-blue-300', title: 'Solution Walkthrough' },
-                                  'EDGE CASES': { color: 'text-red-300', title: 'Edge Cases' },
-                                  'General': { color: 'text-gray-300', title: 'General' }
-                                };
-                                
+                                  'CLARIFYING QUESTIONS': { color: 'text-yellow-300', title: 'Clarifying Questions' },
+                                  'ASSUMPTIONS': { color: 'text-orange-200', title: 'Assumptions' },
+                                  'API DESIGN': { color: 'text-green-300', title: 'API Design' },
+                                  'DATA MODEL': { color: 'text-teal-300', title: 'Data Model' },
+                                  'SCALING & PERFORMANCE': { color: 'text-blue-300', title: 'Scaling & Performance' },
+                                  'RELIABILITY & FAULT TOLERANCE': { color: 'text-indigo-300', title: 'Reliability & Fault Tolerance' },
+                                  'SECURITY & PRIVACY': { color: 'text-pink-300', title: 'Security & Privacy' },
+                                  'REQUEST FLOW': { color: 'text-lime-200', title: 'Request Flow' },
+                                  'TEXT DIAGRAM': { color: 'text-purple-300', title: 'Text Design Diagram' }
+                                } as const;
+
                                 return Object.entries(groupedThoughts).map(([section, thoughts]) => {
-                                  if (thoughts.length === 0) return null;
-                                  
-                                  const config = sectionConfig[section as keyof typeof sectionConfig] || sectionConfig['General'];
-                                  
+                                  if (!thoughts || thoughts.length === 0) return null;
+                                  const config = sectionConfig[section as keyof typeof sectionConfig] || { color: 'text-gray-300', title: section };
+
                                   return (
                                     <div key={section} className="space-y-3">
                                       <div className={`text-sm font-semibold ${config.color} border-b border-gray-600 pb-1`}>
@@ -667,7 +666,7 @@ const Solutions: React.FC<SolutionsProps> = ({
                       />
 
                       <SolutionSection
-                        title="Solution"
+                        title="System Design Blueprint"
                         content={solutionData}
                         isLoading={!solutionData}
                         currentLanguage={currentLanguage}
