@@ -6,7 +6,6 @@ import { ProcessingHelper } from "./ProcessingHelper"
 import { ScreenshotHelper } from "./ScreenshotHelper"
 import { ShortcutsHelper } from "./shortcuts"
 import { initAutoUpdater } from "./autoUpdater"
-import { configHelper } from "./ConfigHelper"
 import * as dotenv from "dotenv"
 
 // Constants
@@ -347,23 +346,14 @@ async function createWindow(): Promise<void> {
   state.currentY = bounds.y
   state.isWindowVisible = true
   
-  // Set opacity based on user preferences or hide initially
-  // Ensure the window is visible for the first launch or if opacity > 0.1
-  const savedOpacity = configHelper.getOpacity();
-  console.log(`Initial opacity from config: ${savedOpacity}`);
-  
   // Always make sure window is shown first
   state.mainWindow.showInactive(); // Use showInactive for consistency
   
-  if (savedOpacity <= 0.1) {
-    console.log('Initial opacity too low, setting to 0 and hiding window');
-    state.mainWindow.setOpacity(0);
-    state.isWindowVisible = false;
-  } else {
-    console.log(`Setting initial opacity to ${savedOpacity}`);
-    state.mainWindow.setOpacity(savedOpacity);
-    state.isWindowVisible = true;
-  }
+  // Set default opacity
+  const defaultOpacity = 1.0;
+  console.log(`Setting initial opacity to ${defaultOpacity}`);
+  state.mainWindow.setOpacity(defaultOpacity);
+  state.isWindowVisible = true;
 }
 
 function handleWindowMove(): void {
@@ -451,14 +441,14 @@ function moveWindowVertical(updateFn: (y: number) => number): void {
     state.screenHeight + ((state.windowSize?.height || 0) * 2) / 3
 
   // Log the current state and limits
-  console.log({
-    newY,
-    maxUpLimit,
-    maxDownLimit,
-    screenHeight: state.screenHeight,
-    windowHeight: state.windowSize?.height,
-    currentY: state.currentY
-  })
+  // console.log({
+  //   newY,
+  //   maxUpLimit,
+  //   maxDownLimit,
+  //   screenHeight: state.screenHeight,
+  //   windowHeight: state.windowSize?.height,
+  //   currentY: state.currentY
+  // })
 
   // Only update if within bounds
   if (newY >= maxUpLimit && newY <= maxDownLimit) {
@@ -489,17 +479,10 @@ function setWindowDimensions(width: number, height: number): void {
 
 // Environment setup
 function loadEnvVariables() {
-  if (isDev) {
-    console.log("Loading env variables from:", path.join(process.cwd(), ".env"))
-    dotenv.config({ path: path.join(process.cwd(), ".env") })
-  } else {
-    console.log(
-      "Loading env variables from:",
-      path.join(process.resourcesPath, ".env")
-    )
-    dotenv.config({ path: path.join(process.resourcesPath, ".env") })
+  const envPath = path.join(process.cwd(), 'electron', '.env');
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
   }
-  console.log("Environment variables loaded for open-source version")
 }
 
 // Initialize application
@@ -524,11 +507,6 @@ async function initializeApp() {
     app.setPath('cache', cachePath)
       
     loadEnvVariables()
-    
-    // Ensure a configuration file exists
-    if (!configHelper.hasApiKey()) {
-      console.log("No API key found in configuration. User will need to set up.")
-    }
     
     initializeHelpers()
     initializeIpcHandlers({

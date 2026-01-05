@@ -50,38 +50,10 @@ export interface ElectronAPI {
   setInitialCredits: (credits: number) => Promise<void>
   onCreditsUpdated: (callback: (credits: number) => void) => () => void
   onOutOfCredits: (callback: () => void) => () => void
-  openSettingsPortal: () => Promise<void>
+  
   getPlatform: () => string
 
-  // New methods for API configuration
-  getConfig: () => Promise<{
-    extractionApiKey: string;
-    extractionEndpoint: string;
-    extractionModel: string;
-    solutionApiKey: string;
-    solutionEndpoint: string;
-    solutionModel: string;
-    debuggingApiKey: string;
-    debuggingEndpoint: string;
-    debuggingModel: string;
-    language: string;
-    opacity: number;
-  }>
-  updateConfig: (config: {
-    extractionApiKey?: string;
-    extractionEndpoint?: string;
-    extractionModel?: string;
-    solutionApiKey?: string;
-    solutionEndpoint?: string;
-    solutionModel?: string;
-    debuggingApiKey?: string;
-    debuggingEndpoint?: string;
-    debuggingModel?: string;
-    language?: string;
-    opacity?: number;
-  }) => Promise<boolean>
   checkApiKey: () => Promise<boolean>
-  validateApiKey: (apiKey: string) => Promise<{ valid: boolean; error?: string }>
   openLink: (url: string) => void
   onApiKeyInvalid: (callback: () => void) => () => void
   removeListener: (eventName: string, callback: (...args: any[]) => void) => void

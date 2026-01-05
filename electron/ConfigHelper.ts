@@ -1,9 +1,9 @@
 // ConfigHelper.ts
-import { app } from "electron"
 import { EventEmitter } from "events"
-import fs from "node:fs"
-import path from "node:path"
+import * as dotenv from "dotenv"
 import { OpenAI } from "openai"
+import path from "node:path"
+import fs from "node:fs"
 
 interface Config {
   aiApiKey: string;
@@ -14,7 +14,6 @@ interface Config {
 }
 
 export class ConfigHelper extends EventEmitter {
-  private configPath: string;
   private defaultConfig: Config = {
     aiApiKey: "",
     aiEndpoint: "https://api.openai.com/v1",
@@ -25,85 +24,39 @@ export class ConfigHelper extends EventEmitter {
 
   constructor() {
     super();
-    // Use the app's user data directory to store the config
-    try {
-      this.configPath = path.join(app.getPath('userData'), 'config.json');
-      console.log('Config path:', this.configPath);
-    } catch (err) {
-      console.warn('Could not access user data path, using fallback');
-      this.configPath = path.join(process.cwd(), 'config.json');
-    }
-
-    // Ensure the initial config file exists
-    this.ensureConfigExists();
+    this.loadEnvFile();
   }
 
   /**
-   * Ensure config file exists
+   * Load .env file from electron directory
    */
-  private ensureConfigExists(): void {
+  private loadEnvFile(): void {
     try {
-      if (!fs.existsSync(this.configPath)) {
-        this.saveConfig(this.defaultConfig);
+      const envPath = path.join(process.cwd(), 'electron', '.env');
+      if (fs.existsSync(envPath)) {
+        dotenv.config({ path: envPath });
       }
-    } catch (err) {
-      console.error("Error ensuring config exists:", err);
+    } catch (error) {
+      console.warn('Could not load .env file:', error);
     }
   }
 
+  /**
+   * Load configuration from environment variables
+   */
   public loadConfig(): Config {
     try {
-      if (fs.existsSync(this.configPath)) {
-        const configData = fs.readFileSync(this.configPath, 'utf8');
-        const config = JSON.parse(configData);
+      const config: Config = {
+        aiApiKey: process.env.AI_API_KEY || this.defaultConfig.aiApiKey,
+        aiEndpoint: process.env.AI_ENDPOINT || this.defaultConfig.aiEndpoint,
+        aiModel: process.env.AI_MODEL || this.defaultConfig.aiModel,
+        language: process.env.DEFAULT_LANGUAGE || this.defaultConfig.language,
+        opacity: this.defaultConfig.opacity
+      };
 
-        return {
-          ...this.defaultConfig,
-          ...config
-        };
-      }
-
-      // If no config exists, create a default one
-      this.saveConfig(this.defaultConfig);
-      return this.defaultConfig;
+      return config;
     } catch (err) {
       console.error("Error loading config:", err);
-      return this.defaultConfig;
-    }
-  }
-
-  /**
-   * Save configuration to disk
-   */
-  public saveConfig(config: Config): void {
-    try {
-      // Ensure the directory exists
-      const configDir = path.dirname(this.configPath);
-      if (!fs.existsSync(configDir)) {
-        fs.mkdirSync(configDir, { recursive: true });
-      }
-      // Write the config file
-      fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
-    } catch (err) {
-      console.error("Error saving config:", err);
-    }
-  }
-
-  /**
-   * Update specific configuration values
-   */
-  public updateConfig(updates: Partial<Config>): Config {
-    try {
-      const currentConfig = this.loadConfig();
-      const newConfig = { ...currentConfig, ...updates };
-      this.saveConfig(newConfig);
-
-      // Emit update event for config changes
-      this.emit('config-updated', newConfig);
-
-      return newConfig;
-    } catch (error) {
-      console.error('Error updating config:', error);
       return this.defaultConfig;
     }
   }
@@ -117,34 +70,16 @@ export class ConfigHelper extends EventEmitter {
   }
 
   /**
-   * Check if extraction API key is configured (deprecated, uses unified AI key)
+   * Check if API key is from environment variables
    */
-  public hasExtractionApiKey(): boolean {
-    const config = this.loadConfig();
-    return !!(config.aiApiKey && config.aiApiKey.trim().length > 0);
-  }
-
-  /**
-   * Check if solution API key is configured (deprecated, uses unified AI key)
-   */
-  public hasSolutionApiKey(): boolean {
-    const config = this.loadConfig();
-    return !!(config.aiApiKey && config.aiApiKey.trim().length > 0);
-  }
-
-  /**
-   * Check if debugging API key is configured (deprecated, uses unified AI key)
-   */
-  public hasDebuggingApiKey(): boolean {
-    const config = this.loadConfig();
-    return !!(config.aiApiKey && config.aiApiKey.trim().length > 0);
+  public hasEnvApiKey(): boolean {
+    return !!(process.env.AI_API_KEY && process.env.AI_API_KEY.trim().length > 0);
   }
 
   /**
    * Validate API key format (basic validation)
    */
   public isValidApiKeyFormat(apiKey: string): boolean {
-    // Basic format validation for OpenAI API keys
     return /^sk-[a-zA-Z0-9]{32,}$/.test(apiKey.trim());
   }
 
@@ -154,13 +89,11 @@ export class ConfigHelper extends EventEmitter {
   public async testApiKey(apiKey: string): Promise<{ valid: boolean, error?: string }> {
     try {
       const openai = new OpenAI({ apiKey });
-      // Make a simple API call to test the key
       await openai.models.list();
       return { valid: true };
     } catch (error: any) {
       console.error('OpenAI API key test failed:', error);
 
-      // Determine the specific error type for better error messages
       let errorMessage = 'Unknown error validating OpenAI API key';
 
       if (error.status === 401) {
@@ -178,35 +111,11 @@ export class ConfigHelper extends EventEmitter {
   }
 
   /**
-   * Get the stored opacity value
-   */
-  public getOpacity(): number {
-    const config = this.loadConfig();
-    return config.opacity !== undefined ? config.opacity : 1.0;
-  }
-
-  /**
-   * Set the window opacity value
-   */
-  public setOpacity(opacity: number): void {
-    // Ensure opacity is between 0.1 and 1.0
-    const validOpacity = Math.min(1.0, Math.max(0.1, opacity));
-    this.updateConfig({ opacity: validOpacity });
-  }
-
-  /**
    * Get the preferred programming language
    */
   public getLanguage(): string {
     const config = this.loadConfig();
     return config.language || "python";
-  }
-
-  /**
-   * Set the preferred programming language
-   */
-  public setLanguage(language: string): void {
-    this.updateConfig({ language });
   }
 }
 

@@ -64,7 +64,6 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
         
         if (newIndex !== currentIndex) {
           setLanguage(values[newIndex]);
-          window.electronAPI.updateConfig({ language: values[newIndex] });
         }
       }
       
@@ -88,12 +87,7 @@ const QueueCommands: React.FC<QueueCommandsProps> = ({
       localStorage.clear();
       sessionStorage.clear();
       
-      // Clear the API key in the configuration
-      await window.electronAPI.updateConfig({
-        apiKey: '',
-      });
-      
-      showToast('Success', 'Logged out successfully', 'success');
+      showToast('Success', 'App will reload', 'success');
       
       // Reload the app after a short delay
       setTimeout(() => {

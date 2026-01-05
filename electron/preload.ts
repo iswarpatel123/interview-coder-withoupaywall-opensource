@@ -30,7 +30,7 @@ const electronAPI = {
   openSubscriptionPortal: async (authData: { id: string; email: string }) => {
     return ipcRenderer.invoke("open-subscription-portal", authData)
   },
-  openSettingsPortal: () => ipcRenderer.invoke("open-settings-portal"),
+  
   updateContentDimensions: (dimensions: { width: number; height: number }) =>
     ipcRenderer.invoke("update-content-dimensions", dimensions),
   clearStore: () => ipcRenderer.invoke("clear-store"),
@@ -203,32 +203,7 @@ const electronAPI = {
   },
   getPlatform: () => process.platform,
   
-  // New methods for API configuration
-  getConfig: () => ipcRenderer.invoke("get-config"),
-  updateConfig: (config: {
-    extractionApiKey?: string;
-    extractionEndpoint?: string;
-    extractionModel?: string;
-    solutionApiKey?: string;
-    solutionEndpoint?: string;
-    solutionModel?: string;
-    debuggingApiKey?: string;
-    debuggingEndpoint?: string;
-    debuggingModel?: string;
-    language?: string;
-    opacity?: number;
-  }) =>
-    ipcRenderer.invoke("update-config", config),
-  onShowSettings: (callback: () => void) => {
-    const subscription = () => callback()
-    ipcRenderer.on("show-settings-dialog", subscription)
-    return () => {
-      ipcRenderer.removeListener("show-settings-dialog", subscription)
-    }
-  },
   checkApiKey: () => ipcRenderer.invoke("check-api-key"),
-  validateApiKey: (apiKey: string) => 
-    ipcRenderer.invoke("validate-api-key", apiKey),
   openExternal: (url: string) => 
     ipcRenderer.invoke("openExternal", url),
   onApiKeyInvalid: (callback: () => void) => {
