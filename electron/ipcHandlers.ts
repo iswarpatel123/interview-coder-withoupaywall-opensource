@@ -9,30 +9,8 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
   console.log("Initializing IPC handlers")
 
   // Configuration handlers
-  ipcMain.handle("get-config", () => {
-    return configHelper.loadConfig();
-  })
-
-  ipcMain.handle("update-config", (_event, updates) => {
-    return configHelper.updateConfig(updates);
-  })
-
   ipcMain.handle("check-api-key", () => {
     return configHelper.hasApiKey();
-  })
-  
-  ipcMain.handle("validate-api-key", async (_event, apiKey) => {
-    // First check the format
-    if (!configHelper.isValidApiKeyFormat(apiKey)) {
-      return { 
-        valid: false, 
-        error: "Invalid API key format. OpenAI API keys start with 'sk-'" 
-      };
-    }
-    
-    // Then test the API key with OpenAI
-    const result = await configHelper.testApiKey(apiKey);
-    return result;
   })
 
   // Credits handlers
@@ -200,15 +178,7 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
     }
   })
 
-  // Settings portal handler
-  ipcMain.handle("open-settings-portal", () => {
-    const mainWindow = deps.getMainWindow();
-    if (mainWindow) {
-      mainWindow.webContents.send("show-settings-dialog");
-      return { success: true };
-    }
-    return { success: false, error: "Main window not available" };
-  })
+  
 
   // Window management handlers
   ipcMain.handle("toggle-window", () => {
@@ -235,7 +205,7 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
   ipcMain.handle("trigger-process-screenshots", async () => {
     try {
       // Check for extraction API key before processing
-      if (!configHelper.hasExtractionApiKey()) {
+      if (!configHelper.hasApiKey()) {
         const mainWindow = deps.getMainWindow();
         if (mainWindow) {
           mainWindow.webContents.send(deps.PROCESSING_EVENTS.API_KEY_INVALID);

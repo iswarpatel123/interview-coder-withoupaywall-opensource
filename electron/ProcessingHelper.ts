@@ -195,16 +195,10 @@ export class ProcessingHelper {
 
         if (!result.success) {
           console.log("Processing failed:", result.error)
-          if (result.error?.includes("API Key") || result.error?.includes("OpenAI")) {
-            mainWindow.webContents.send(
-              this.deps.PROCESSING_EVENTS.API_KEY_INVALID
-            )
-          } else {
-            mainWindow.webContents.send(
-              this.deps.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR,
-              result.error
-            )
-          }
+          mainWindow.webContents.send(
+            this.deps.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR,
+            result.error
+          )
           // Reset view back to queue on error
           console.log("Resetting view to queue due to error")
           this.deps.setView("queue")
@@ -393,7 +387,7 @@ Your response must include:
 
 2. THOUGHTS / DISCUSSION:
    - Precise followup questions to ask the interviewer
-   - Solution approach(es). Brute force (if available for this case) & optimal
+   - Solution approach(es). Brute force (if available for this case) & optimal. Explain in detail, which interviewee can read and understand and explain to the interviewer
    - Solution walkthrough with the simplest case
    - Edge cases to consider
 

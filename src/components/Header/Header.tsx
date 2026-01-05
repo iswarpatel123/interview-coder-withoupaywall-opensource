@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { Settings, LogOut, ChevronDown, ChevronUp } from 'lucide-react';
+import { LogOut, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useToast } from '../../contexts/toast';
 
 interface HeaderProps {
   currentLanguage: string;
   setLanguage: (language: string) => void;
-  onOpenSettings: () => void;
 }
 
 // Available programming languages
@@ -21,27 +20,22 @@ const LANGUAGES = [
   { value: 'typescript', label: 'TypeScript' },
 ];
 
-export function Header({ currentLanguage, setLanguage, onOpenSettings }: HeaderProps) {
+export function Header({ currentLanguage, setLanguage }: HeaderProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const { showToast } = useToast();
 
-  // Handle logout - clear API key and reload app
+  // Handle logout - reload app
   const handleLogout = async () => {
     try {
-      // Update config with empty API key
-      await window.electronAPI.updateConfig({
-        apiKey: '',
-      });
-      
-      showToast('Success', 'Logged out successfully', 'success');
+      showToast('Success', 'App will reload', 'success');
       
       // Reload the app after a short delay
       setTimeout(() => {
         window.location.reload();
       }, 1500);
     } catch (error) {
-      console.error('Error logging out:', error);
-      showToast('Error', 'Failed to log out', 'error');
+      console.error('Error reloading app:', error);
+      showToast('Error', 'Failed to reload', 'error');
     }
   };
 
@@ -105,17 +99,6 @@ export function Header({ currentLanguage, setLanguage, onOpenSettings }: HeaderP
       </div>
       
       <div className="flex items-center space-x-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 px-2 text-white/70 hover:text-white hover:bg-white/10"
-          onClick={onOpenSettings}
-          title="Settings"
-        >
-          <Settings className="h-4 w-4 mr-1" />
-          <span className="text-xs">Settings</span>
-        </Button>
-        
         <Button
           variant="ghost"
           size="sm"

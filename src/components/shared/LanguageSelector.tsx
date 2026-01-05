@@ -15,9 +15,6 @@ export const LanguageSelector: React.FC<LanguageSelectorProps> = ({
     const newLanguage = e.target.value
     
     try {
-      // Save language preference to electron store
-      await window.electronAPI.updateConfig({ language: newLanguage })
-      
       // Update global language variable
       window.__LANGUAGE__ = newLanguage
       
