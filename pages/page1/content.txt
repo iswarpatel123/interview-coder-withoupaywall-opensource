@@ -1,0 +1,12 @@
+Page 1: Getting Started
+
+Welcome to the Interview Assistant!
+
+This application helps you during coding interviews by providing quick reference materials.
+
+Features:
+- Navigate between pages using ALT+Left and ALT+Right
+- Toggle visibility with ALT+B
+- Move the window using CTRL+Arrow keys
+
+Use this space to store your interview notes, cheat sheets, or reference materials.

@@ -21,7 +21,8 @@
       "dist/**/*",
       "dist-electron/**/*",
       "package.json",
-      "electron/**/*"
+      "electron/**/*",
+      "pages/**/*"
     ],
     "directories": {
       "output": "release",

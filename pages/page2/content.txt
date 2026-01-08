@@ -1,0 +1,18 @@
+Page 2: Data Structures Cheat Sheet
+
+Common Time Complexities:
+
+Array Access: O(1)
+Array Search: O(n)
+Array Insertion/Deletion: O(n)
+
+Linked List Access: O(n)
+Linked List Insertion/Deletion: O(1)
+
+Hash Map Access/Insert/Delete: O(1) average
+
+Binary Search Tree Operations: O(log n) average, O(n) worst
+
+Heap Insert/Delete: O(log n)
+
+Remember: Choose the right data structure based on your use case!

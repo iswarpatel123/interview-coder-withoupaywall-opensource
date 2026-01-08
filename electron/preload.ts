@@ -223,7 +223,17 @@ const electronAPI = {
       ipcRenderer.removeListener("delete-last-screenshot", subscription)
     }
   },
-  deleteLastScreenshot: () => ipcRenderer.invoke("delete-last-screenshot")
+  deleteLastScreenshot: () => ipcRenderer.invoke("delete-last-screenshot"),
+  
+  // Local pages handlers
+  getLocalPages: () => ipcRenderer.invoke("get-local-pages"),
+  onNavigatePage: (callback: (direction: "prev" | "next") => void) => {
+    const subscription = (_: any, direction: "prev" | "next") => callback(direction)
+    ipcRenderer.on("navigate-page", subscription)
+    return () => {
+      ipcRenderer.removeListener("navigate-page", subscription)
+    }
+  }
 }
 
 // Before exposing the API
