@@ -1,19 +1,18 @@
 @echo off
-echo === Interview Coder - Invisible Edition (No Paywall) ===
+echo === Interview Assistant - Reference Pages Viewer ===
 echo.
-echo IMPORTANT: This app is designed to be INVISIBLE by default!
+echo IMPORTANT: This app displays your custom reference pages!
 echo Use the keyboard shortcuts to control it:
 echo.
-echo - Toggle Visibility: Ctrl+B (or Cmd+B on Mac)
-echo - Take Screenshot: Ctrl+H
-echo - Process Screenshots: Ctrl+Enter
+echo - Toggle Visibility: Alt+B
+echo - Navigate Pages: Alt+Left / Alt+Right
 echo - Move Window: Ctrl+Arrows (Left/Right/Up/Down)
 echo - Adjust Opacity: Ctrl+[ (decrease) / Ctrl+] (increase)
-echo - Reset View: Ctrl+R
+echo - Zoom: Ctrl+- (out) / Ctrl+= (in) / Ctrl+0 (reset)
 echo - Quit App: Ctrl+Q
 echo.
-echo When you press Ctrl+B, the window will toggle between visible and invisible.
-echo If movement shortcuts aren't working, try making the window visible first with Ctrl+B.
+echo Add your pages in the 'pages/' directory.
+echo Each page needs a folder with content.txt and optionally an image.
 echo.
 
 cd /D "%~dp0"
@@ -33,15 +32,16 @@ echo === Step 3: Building application... ===
 echo This may take a moment...
 call npm run build
 
-echo === Step 4: Launching in stealth mode... ===
-echo Remember: Press Ctrl+B to make it visible, Ctrl+[ and Ctrl+] to adjust opacity!
+echo === Step 4: Launching application... ===
+echo Remember: Press Alt+B to toggle visibility, Alt+Left/Right to navigate pages!
 echo.
 set NODE_ENV=production
 start /B cmd /c "npx electron ./dist-electron/main.js"
 
-echo App is now running invisibly! Press Ctrl+B to make it visible.
+echo App is now running! Press Alt+B to toggle visibility.
 echo.
 echo If you encounter any issues:
 echo 1. Make sure you've installed dependencies with 'npm install'
-echo 2. Press Ctrl+B multiple times to toggle visibility
+echo 2. Press Alt+B to toggle visibility
 echo 3. Check Task Manager to verify the app is running
+echo 4. Add pages in the 'pages/' directory if you see no content
