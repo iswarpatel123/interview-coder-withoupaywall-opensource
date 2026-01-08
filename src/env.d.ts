@@ -59,6 +59,18 @@ interface ElectronAPI {
   installUpdate: () => void
   onUpdateAvailable: (callback: (info: any) => void) => () => void
   onUpdateDownloaded: (callback: (info: any) => void) => () => void
+  // Local pages methods
+  getLocalPages: () => Promise<{ 
+    success: boolean
+    pages?: Array<{
+      id: number
+      name: string
+      content: string
+      image: string | null
+    }>
+    error?: string
+  }>
+  onNavigatePage: (callback: (direction: "prev" | "next") => void) => () => void
 }
 
 interface Window {

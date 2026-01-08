@@ -4,6 +4,8 @@ import { ipcMain, shell, dialog } from "electron"
 import { randomBytes } from "crypto"
 import { IIpcHandlerDeps } from "./main"
 import { configHelper } from "./ConfigHelper"
+import * as fs from "fs"
+import * as path from "path"
 
 export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
   console.log("Initializing IPC handlers")
@@ -316,6 +318,58 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
     } catch (error) {
       console.error("Error deleting last screenshot:", error)
       return { success: false, error: "Failed to delete last screenshot" }
+    }
+  })
+
+  // Local pages handlers
+  ipcMain.handle("get-local-pages", async () => {
+    try {
+      const pagesDir = path.join(process.cwd(), "pages")
+      
+      if (!fs.existsSync(pagesDir)) {
+        return { success: false, error: "Pages directory not found" }
+      }
+
+      const pageDirs = fs.readdirSync(pagesDir).filter(file => {
+        const fullPath = path.join(pagesDir, file)
+        return fs.statSync(fullPath).isDirectory()
+      }).sort()
+
+      const pages = pageDirs.map((dir, index) => {
+        const pageDir = path.join(pagesDir, dir)
+        const contentPath = path.join(pageDir, "content.txt")
+        
+        let content = ""
+        if (fs.existsSync(contentPath)) {
+          content = fs.readFileSync(contentPath, "utf-8")
+        }
+
+        const imageFiles = fs.readdirSync(pageDir).filter(file => 
+          /\.(png|jpg|jpeg|svg|gif)$/i.test(file)
+        )
+        const imagePath = imageFiles.length > 0 ? path.join(pageDir, imageFiles[0]) : null
+        
+        let imageData = null
+        if (imagePath && fs.existsSync(imagePath)) {
+          if (imagePath.endsWith('.svg')) {
+            imageData = 'data:image/svg+xml;base64,' + fs.readFileSync(imagePath).toString('base64')
+          } else {
+            imageData = 'data:image/png;base64,' + fs.readFileSync(imagePath).toString('base64')
+          }
+        }
+
+        return {
+          id: index,
+          name: dir,
+          content,
+          image: imageData
+        }
+      })
+
+      return { success: true, pages }
+    } catch (error) {
+      console.error("Error loading local pages:", error)
+      return { success: false, error: "Failed to load pages" }
     }
   })
 }

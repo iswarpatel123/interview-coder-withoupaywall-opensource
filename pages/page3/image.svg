@@ -1,0 +1,5 @@
+<svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+  <rect width="400" height="300" fill="#1a1a2e"/>
+  <text x="200" y="140" font-family="Arial" font-size="24" fill="#ffffff" text-anchor="middle">Page 3</text>
+  <text x="200" y="170" font-family="Arial" font-size="18" fill="#3498db" text-anchor="middle">Algorithm Patterns</text>
+</svg>

@@ -95,9 +95,24 @@ export class ShortcutsHelper {
       this.deps.moveWindowUp()
     })
 
-    globalShortcut.register("CommandOrControl+B", () => {
-      //console.log("Command/Ctrl + B pressed. Toggling window visibility.")
+    globalShortcut.register("Alt+B", () => {
+      //console.log("Alt + B pressed. Toggling window visibility.")
       this.deps.toggleMainWindow()
+    })
+
+    // Page navigation shortcuts
+    globalShortcut.register("Alt+Left", () => {
+      const mainWindow = this.deps.getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send("navigate-page", "prev")
+      }
+    })
+
+    globalShortcut.register("Alt+Right", () => {
+      const mainWindow = this.deps.getMainWindow()
+      if (mainWindow) {
+        mainWindow.webContents.send("navigate-page", "next")
+      }
     })
 
     globalShortcut.register("CommandOrControl+Q", () => {

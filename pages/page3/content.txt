@@ -1,0 +1,27 @@
+Page 3: Algorithm Patterns
+
+Common Patterns:
+
+1. Two Pointers
+   - Use for sorted arrays or linked lists
+   - One pointer at start, one at end
+
+2. Sliding Window
+   - Use for substring/subarray problems
+   - Maintain a window and expand/shrink as needed
+
+3. Binary Search
+   - Use for sorted data
+   - Divide and conquer approach
+
+4. Dynamic Programming
+   - Break problem into smaller subproblems
+   - Store results to avoid recomputation
+
+5. Breadth-First Search (BFS)
+   - Level-by-level traversal
+   - Use queue
+
+6. Depth-First Search (DFS)
+   - Go deep first
+   - Use recursion or stack
