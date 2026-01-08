@@ -125,71 +125,7 @@ const SolutionSection = ({
   )
 }
 
-export const ComplexitySection = ({
-  timeComplexity,
-  spaceComplexity,
-  isLoading
-}: {
-  timeComplexity: string | null
-  spaceComplexity: string | null
-  isLoading: boolean
-}) => {
-  // Helper to ensure we have proper complexity values
-  const formatComplexity = (complexity: string | null): string => {
-    // Default if no complexity returned by LLM
-    if (!complexity || complexity.trim() === "") {
-      return "Complexity not available";
-    }
 
-    if (complexity.toLowerCase().includes("not applicable")) {
-      return complexity;
-    }
-
-    const bigORegex = /O\([^)]+\)/i;
-    // Return the complexity as is if it already has Big O notation
-    if (bigORegex.test(complexity)) {
-      return complexity;
-    }
-
-    // Concat Big O notation to the complexity
-    return `O(${complexity})`;
-  };
-
-  const formattedTimeComplexity = formatComplexity(timeComplexity);
-  const formattedSpaceComplexity = formatComplexity(spaceComplexity);
-
-  return (
-    <div className="space-y-2">
-          <h2 className="text-[13px] font-medium text-white tracking-wide">
-            Scope & Complexity Notes
-          </h2>
-      {isLoading ? (
-            <p className="text-xs bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 bg-clip-text text-transparent animate-pulse">
-              Summarizing complexity notes...
-            </p>
-      ) : (
-        <div className="space-y-3">
-          <div className="text-[13px] leading-[1.4] text-gray-100 bg-white/5 rounded-md p-3">
-            <div className="flex items-start gap-2">
-              <div className="w-1 h-1 rounded-full bg-blue-400/80 mt-2 shrink-0" />
-              <div>
-                <strong>Time:</strong> {formattedTimeComplexity}
-              </div>
-            </div>
-          </div>
-          <div className="text-[13px] leading-[1.4] text-gray-100 bg-white/5 rounded-md p-3">
-            <div className="flex items-start gap-2">
-              <div className="w-1 h-1 rounded-full bg-blue-400/80 mt-2 shrink-0" />
-              <div>
-                <strong>Space:</strong> {formattedSpaceComplexity}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 export interface SolutionsProps {
   setView: (view: "queue" | "solutions" | "debug") => void
@@ -210,25 +146,11 @@ const Solutions: React.FC<SolutionsProps> = ({
   const [problemStatementData, setProblemStatementData] =
     useState<ProblemStatementData | null>(null)
   const [solutionData, setSolutionData] = useState<string | null>(null)
-  const [thoughtsData, setThoughtsData] = useState<string[] | null>(null)
-  const [timeComplexityData, setTimeComplexityData] = useState<string | null>(
-    null
-  )
-  const [spaceComplexityData, setSpaceComplexityData] = useState<string | null>(
-    null
-  )
 
   const [isTooltipVisible, setIsTooltipVisible] = useState(false)
   const [tooltipHeight, setTooltipHeight] = useState(0)
 
   const [isResetting, setIsResetting] = useState(false)
-
-  // Debug thoughtsData
-  useEffect(() => {
-    if (thoughtsData) {
-      console.log("Thoughts data received:", thoughtsData);
-    }
-  }, [thoughtsData])
 
   interface Screenshot {
     id: string
@@ -329,9 +251,6 @@ const Solutions: React.FC<SolutionsProps> = ({
       window.electronAPI.onSolutionStart(() => {
         // Every time processing starts, reset relevant states
         setSolutionData(null)
-        setThoughtsData(null)
-        setTimeComplexityData(null)
-        setSpaceComplexityData(null)
       }),
       window.electronAPI.onProblemExtracted((data: ProblemStatementData) => {
         queryClient.setQueryData(["problem_statement"], data)
@@ -339,20 +258,14 @@ const Solutions: React.FC<SolutionsProps> = ({
       //if there was an error processing the initial solution
       window.electronAPI.onSolutionError((error: string) => {
         showToast("Processing Failed", error, "error")
-        // Reset solutions in the cache (even though this shouldn't ever happen) and complexities to previous states
+        // Reset solutions in the cache (even though this shouldn't ever happen) to previous states
         const solution = queryClient.getQueryData(["solution"]) as {
           code: string
-          thoughts: string[]
-          time_complexity: string
-          space_complexity: string
         } | null
         if (!solution) {
           setView("queue")
         }
         setSolutionData(solution?.code || null)
-        setThoughtsData(solution?.thoughts || null)
-        setTimeComplexityData(solution?.time_complexity || null)
-        setSpaceComplexityData(solution?.space_complexity || null)
         console.error("Processing error:", error)
       }),
       //when the initial solution is generated, we'll set the solution data to that
@@ -363,17 +276,11 @@ const Solutions: React.FC<SolutionsProps> = ({
         }
         console.log({ data })
         const solutionData = {
-          code: data.code,
-          thoughts: data.thoughts,
-          time_complexity: data.time_complexity,
-          space_complexity: data.space_complexity
+          code: data.code
         }
 
         queryClient.setQueryData(["solution"], solutionData)
         setSolutionData(solutionData.code || null)
-        setThoughtsData(solutionData.thoughts || null)
-        setTimeComplexityData(solutionData.time_complexity || null)
-        setSpaceComplexityData(solutionData.space_complexity || null)
 
         // Fetch latest screenshots when solution is successful
         const fetchScreenshots = async () => {
@@ -447,15 +354,9 @@ const Solutions: React.FC<SolutionsProps> = ({
       if (event?.query.queryKey[0] === "solution") {
         const solution = queryClient.getQueryData(["solution"]) as {
           code: string
-          thoughts: string[]
-          time_complexity: string
-          space_complexity: string
         } | null
 
         setSolutionData(solution?.code ?? null)
-        setThoughtsData(solution?.thoughts ?? null)
-        setTimeComplexityData(solution?.time_complexity ?? null)
-        setSpaceComplexityData(solution?.space_complexity ?? null)
       }
     })
     return () => unsubscribe()
@@ -591,91 +492,11 @@ const Solutions: React.FC<SolutionsProps> = ({
 
                   {solutionData && (
                     <>
-<ContentSection
-                        title={`Design Guide (${COMMAND_KEY} + Arrow keys to scroll)`}
-                        content={
-                          thoughtsData && (
-                            <div className="space-y-6">
-                              {(() => {
-                                const groupedThoughts: { [key: string]: string[] } = {
-                                  'CLARIFYING QUESTIONS': [],
-                                  'ASSUMPTIONS': [],
-                                  'API DESIGN': [],
-                                  'DATA MODEL': [],
-                                  'SCALING & PERFORMANCE': [],
-                                  'RELIABILITY & FAULT TOLERANCE': [],
-                                  'SECURITY & PRIVACY': [],
-                                  'REQUEST FLOW': [],
-                                  'TEXT DIAGRAM': []
-                                };
-
-                                thoughtsData.forEach((thought) => {
-                                  const sectionMatch = thought.match(/^\[([^\]]+)\]\s*(.*)$/);
-                                  if (sectionMatch) {
-                                    const section = sectionMatch[1];
-                                    const content = sectionMatch[2].trim();
-                                    if (groupedThoughts[section]) {
-                                      groupedThoughts[section].push(content);
-                                    } else {
-                                      if (!groupedThoughts['ASSUMPTIONS']) groupedThoughts['ASSUMPTIONS'] = [];
-                                      groupedThoughts['ASSUMPTIONS'].push(thought);
-                                    }
-                                  } else {
-                                    if (!groupedThoughts['ASSUMPTIONS']) groupedThoughts['ASSUMPTIONS'] = [];
-                                    groupedThoughts['ASSUMPTIONS'].push(thought);
-                                  }
-                                });
-
-                                const sectionConfig = {
-                                  'CLARIFYING QUESTIONS': { color: 'text-yellow-300', title: 'Clarifying Questions' },
-                                  'ASSUMPTIONS': { color: 'text-orange-200', title: 'Assumptions' },
-                                  'API DESIGN': { color: 'text-green-300', title: 'API Design' },
-                                  'DATA MODEL': { color: 'text-teal-300', title: 'Data Model' },
-                                  'SCALING & PERFORMANCE': { color: 'text-blue-300', title: 'Scaling & Performance' },
-                                  'RELIABILITY & FAULT TOLERANCE': { color: 'text-indigo-300', title: 'Reliability & Fault Tolerance' },
-                                  'SECURITY & PRIVACY': { color: 'text-pink-300', title: 'Security & Privacy' },
-                                  'REQUEST FLOW': { color: 'text-lime-200', title: 'Request Flow' },
-                                  'TEXT DIAGRAM': { color: 'text-purple-300', title: 'Text Design Diagram' }
-                                } as const;
-
-                                return Object.entries(groupedThoughts).map(([section, thoughts]) => {
-                                  if (!thoughts || thoughts.length === 0) return null;
-                                  const config = sectionConfig[section as keyof typeof sectionConfig] || { color: 'text-gray-300', title: section };
-
-                                  return (
-                                    <div key={section} className="space-y-3">
-                                      <div className={`text-sm font-semibold ${config.color} border-b border-gray-600 pb-1`}>
-                                        {config.title}
-                                      </div>
-                                      <div className="text-gray-100 text-xs whitespace-pre-wrap">
-                                        {thoughts.map((thought, thoughtIndex) => (
-                                          <div key={thoughtIndex} className="mb-2">
-                                            {thought}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  );
-                                }).filter(Boolean);
-                              })()}
-                            </div>
-                          )
-                        }
-                        isLoading={!thoughtsData}
-                        backgroundColor="rounded-md p-3 font-mono text-xs"
-                      />
-
                       <SolutionSection
                         title="System Design Blueprint"
                         content={solutionData}
                         isLoading={!solutionData}
                         currentLanguage={currentLanguage}
-                      />
-
-                      <ComplexitySection
-                        timeComplexity={timeComplexityData}
-                        spaceComplexity={spaceComplexityData}
-                        isLoading={!timeComplexityData || !spaceComplexityData}
                       />
                     </>
                   )}

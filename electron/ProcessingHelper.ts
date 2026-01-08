@@ -387,6 +387,12 @@ Return output using this exact structure:
 ## Architecture Overview
 - components and interactions
 
+## Clarifying Questions
+- list questions about unclear requirements
+
+## Assumptions
+- list key assumptions made
+
 ## API Design
 - list endpoints or contracts with method, path, request, response, and notes
 
@@ -410,20 +416,6 @@ Return output using this exact structure:
 \`\`\`
 ---DESIGN_DOC---
 
----STRUCTURED_GUIDE---
-{
-  "clarifying_questions": ["question"],
-  "assumptions": ["assumption"],
-  "api_design": ["endpoint summary"],
-  "data_model": ["entity summary"],
-  "scaling_and_performance": ["note"],
-  "reliability_fault_tolerance": ["note"],
-  "security_privacy": ["note"],
-  "request_flow": ["step"],
-  "text_diagram": "text diagram here"
-}
----STRUCTURED_GUIDE---
-
 Use the provided language preference for any sample payloads: ${language}. Keep the tone concise and interview-ready.`
             },
             ...imageDataList.map(data => ({
@@ -444,46 +436,11 @@ Use the provided language preference for any sample payloads: ${language}. Keep 
 
       let problemInfo: any = null;
       let code = "";
-      let thoughts: string[] = [];
-      let timeComplexity = "Not applicable for system design";
-      let spaceComplexity = "Not applicable for system design";
 
       const designMatch = responseText.match(/---DESIGN_DOC---([\s\S]*?)---DESIGN_DOC---/);
       if (designMatch) {
         const innerMatch = designMatch[1].match(/```(?:markdown)?\s*([\s\S]*?)```/);
         code = innerMatch ? innerMatch[1].trim() : designMatch[1].trim();
-      }
-
-      const guideMatch = responseText.match(/---STRUCTURED_GUIDE---([\s\S]*?)---STRUCTURED_GUIDE---/);
-      if (guideMatch) {
-        try {
-          const guideJson = JSON.parse(guideMatch[1].trim());
-          const sectionMap: Record<string, string> = {
-            clarifying_questions: "CLARIFYING QUESTIONS",
-            assumptions: "ASSUMPTIONS",
-            api_design: "API DESIGN",
-            data_model: "DATA MODEL",
-            scaling_and_performance: "SCALING & PERFORMANCE",
-            reliability_fault_tolerance: "RELIABILITY & FAULT TOLERANCE",
-            security_privacy: "SECURITY & PRIVACY",
-            request_flow: "REQUEST FLOW",
-            text_diagram: "TEXT DIAGRAM"
-          };
-
-          Object.entries(sectionMap).forEach(([key, label]) => {
-            const value = guideJson[key];
-            if (Array.isArray(value)) {
-              value.forEach((item: string) => thoughts.push(`[${label}] ${item}`));
-            } else if (typeof value === "string" && value.trim()) {
-              thoughts.push(`[${label}] ${value.trim()}`);
-            }
-          });
-
-          console.log("Structured guide parsed. Thoughts count:", thoughts.length);
-        } catch (e) {
-          console.log("Structured guide parsing failed, using raw block");
-          thoughts.push(`[API DESIGN] ${guideMatch[1].trim()}`);
-        }
       }
 
       if (!code) {
@@ -499,10 +456,7 @@ Use the provided language preference for any sample payloads: ${language}. Keep 
         });
 
         const solutionData = {
-          code: code,
-          thoughts: thoughts.length > 0 ? thoughts : ["Solution approach based on efficiency and readability"],
-          time_complexity: timeComplexity,
-          space_complexity: spaceComplexity
+          code: code
         };
 
         this.screenshotHelper.clearExtraScreenshotQueue();
@@ -659,9 +613,7 @@ Summarize changes, highlight new risks, and update the architecture, API design,
       const response = {
         code: extractedCode,
         debug_analysis: formattedDebugContent,
-        thoughts: thoughts,
-        time_complexity: "Not applicable for system design",
-        space_complexity: "Not applicable for system design"
+        thoughts: thoughts
       };
 
       return { success: true, data: response };
