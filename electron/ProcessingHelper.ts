@@ -142,24 +142,18 @@ export class ProcessingHelper {
     }
 
     const view = this.deps.getView()
-    console.log("Processing screenshots in view:", view)
 
     if (view === "queue") {
       mainWindow.webContents.send(this.deps.PROCESSING_EVENTS.INITIAL_START)
       const screenshotQueue = this.screenshotHelper.getScreenshotQueue()
-      console.log("Processing main queue screenshots:", screenshotQueue)
 
-      // Check if the queue is empty
       if (!screenshotQueue || screenshotQueue.length === 0) {
-        console.log("No screenshots found in queue");
         mainWindow.webContents.send(this.deps.PROCESSING_EVENTS.NO_SCREENSHOTS);
         return;
       }
 
-      // Check that files actually exist
       const existingScreenshots = screenshotQueue.filter(path => fs.existsSync(path));
       if (existingScreenshots.length === 0) {
-        console.log("Screenshot files don't exist on disk");
         mainWindow.webContents.send(this.deps.PROCESSING_EVENTS.NO_SCREENSHOTS);
         return;
       }
@@ -199,15 +193,11 @@ export class ProcessingHelper {
             this.deps.PROCESSING_EVENTS.INITIAL_SOLUTION_ERROR,
             result.error
           )
-          // Reset view back to queue on error
-          console.log("Resetting view to queue due to error")
           this.deps.setView("queue")
           return
         }
 
-        // Only set view to solutions if processing succeeded
-        console.log("Setting view to solutions after successful processing")
-        mainWindow.webContents.send(
+          mainWindow.webContents.send(
           this.deps.PROCESSING_EVENTS.SOLUTION_SUCCESS,
           result.data
         )
@@ -229,8 +219,6 @@ export class ProcessingHelper {
             error.message || "Server error. Please try again."
           )
         }
-        // Reset view back to queue on error
-        console.log("Resetting view to queue due to error")
         this.deps.setView("queue")
       } finally {
         this.currentProcessingAbortController = null
@@ -239,20 +227,13 @@ export class ProcessingHelper {
       // view == 'solutions'
       const extraScreenshotQueue =
         this.screenshotHelper.getExtraScreenshotQueue()
-      console.log("Processing extra queue screenshots:", extraScreenshotQueue)
-
-      // Check if the extra queue is empty
       if (!extraScreenshotQueue || extraScreenshotQueue.length === 0) {
-        console.log("No extra screenshots found in queue");
         mainWindow.webContents.send(this.deps.PROCESSING_EVENTS.NO_SCREENSHOTS);
-
         return;
       }
 
-      // Check that files actually exist
       const existingExtraScreenshots = extraScreenshotQueue.filter(path => fs.existsSync(path));
       if (existingExtraScreenshots.length === 0) {
-        console.log("Extra screenshot files don't exist on disk");
         mainWindow.webContents.send(this.deps.PROCESSING_EVENTS.NO_SCREENSHOTS);
         return;
       }
@@ -297,10 +278,7 @@ export class ProcessingHelper {
           throw new Error("Failed to load screenshot data for debugging");
         }
 
-        console.log(
-          "Combined screenshots for processing:",
-          validScreenshots.map((s) => s.path)
-        )
+
 
         const result = await this.processExtraScreenshotsHelper(
           validScreenshots,
@@ -348,12 +326,7 @@ export class ProcessingHelper {
 
       const imageDataList = screenshots.map(screenshot => screenshot.data);
 
-      if (mainWindow) {
-        mainWindow.webContents.send("processing-status", {
-          message: "Analyzing screenshots and generating solution...",
-          progress: 20
-        });
-      }
+
 
       if (!this.aiClient) {
         this.initializeAIClients();
@@ -382,18 +355,18 @@ Your response must include:
 
 1. CODE SOLUTION:
    - A clean, optimized implementation
-   - Follow the solution stub structure if provided
    - Comments in code
 
 2. THOUGHTS / DISCUSSION:
-   - Precise followup questions to ask the interviewer
-   - Solution approach(es). Brute force (if available for this case) & optimal. Explain in detail, which interviewee can read and understand and explain to the interviewer
-   - Solution walkthrough with the simplest case
-   - Edge cases to consider
+   2a. Precise followup questions to ask the interviewer
+   2b. Solution approach(es). Brute force (if available for this case) & optimal. Format it in human spoken language which can be read word by word to the interviewer.
+       eg. Brute Force : We can use TWO LOOPS TO ITERATE.. And we can find out the AREA FOR EVERY POSSIBLE COMBINATION..
+           Optimal : We can use TWO POINTER..
+   2c. Solution walkthrough with the simplest case
 
 3. COMPLEXITY ANALYSIS:
-   - Time complexity with detailed explanation (at least 2 sentences)
-   - Space complexity with detailed explanation (at least 2 sentences)
+   - Time complexity with explanation
+   - Space complexity with explanation
 
 For complexity explanations, please be thorough. For example: "Time complexity: O(n) because we iterate through the array only once. This is optimal as we need to examine each element at least once to find the solution." or "Space complexity: O(n) because in the worst case, we store all elements in the hashmap. The additional space scales linearly with the input size."
 Your solution should be efficient and handle edge cases.
@@ -409,14 +382,13 @@ Format your response as:
 {
   "questions_to_ask": ["question 1", "question 2"],
   "solution_approaches": ["approach 1 description", "approach 2 description"],
-  "walkthrough": ["step 1", "step 2", "step 3"],
-  "edge_cases": ["edge case 1", "edge case 2"]
+  "walkthrough": ["step 1", "step 2", "step 3"]
 }
 ---THOUGHTS---
 
 ---COMPLEXITY---
-Time complexity: {O(notation) - detailed explanation}
-Space complexity: {O(notation) - detailed explanation}
+Time complexity: {O(notation) - explanation}
+Space complexity: {O(notation) - explanation}
 ---COMPLEXITY---`
             },
             ...imageDataList.map(data => ({
@@ -470,12 +442,6 @@ Space complexity: {O(notation) - detailed explanation}
             thoughts.push(`[WALKTHROUGH] ${thoughtsJson.walkthrough}`);
           }
 
-          if (thoughtsJson.edge_cases && Array.isArray(thoughtsJson.edge_cases)) {
-            thoughtsJson.edge_cases.forEach((edgeCase: string) => {
-              thoughts.push(`[EDGE CASES] ${edgeCase}`);
-            });
-          }
-
           console.log("JSON parsing successful. Thoughts count:", thoughts.length);
         } catch (e) {
           // Fallback to text parsing if JSON parsing fails
@@ -486,8 +452,7 @@ Space complexity: {O(notation) - detailed explanation}
           const sections = [
             { name: 'QUESTIONS TO ASK', regex: /- (.*)/g },
             { name: 'SOLUTION APPROACHES', regex: /- (.*)/g },
-            { name: 'WALKTHROUGH', regex: /- (.*)/g },
-            { name: 'EDGE CASES', regex: /- (.*)/g }
+            { name: 'WALKTHROUGH', regex: /- (.*)/g }
           ];
 
           thoughts.push(`[SOLUTION APPROACHES] ${thoughtsContent}`);
@@ -508,28 +473,23 @@ Space complexity: {O(notation) - detailed explanation}
 
       this.deps.setProblemInfo(problemInfo);
 
+      const solutionData = {
+        code: code,
+        thoughts: thoughts.length > 0 ? thoughts : ["Solution approach based on efficiency and readability"],
+        time_complexity: timeComplexity,
+        space_complexity: spaceComplexity
+      };
+
+      this.screenshotHelper.clearExtraScreenshotQueue();
+
       if (mainWindow) {
-        mainWindow.webContents.send("processing-status", {
-          message: "Solution generated successfully",
-          progress: 100
-        });
-
-        const solutionData = {
-          code: code,
-          thoughts: thoughts.length > 0 ? thoughts : ["Solution approach based on efficiency and readability"],
-          time_complexity: timeComplexity,
-          space_complexity: spaceComplexity
-        };
-
-        this.screenshotHelper.clearExtraScreenshotQueue();
-
         mainWindow.webContents.send(
           this.deps.PROCESSING_EVENTS.SOLUTION_SUCCESS,
           solutionData
         );
-
-        return { success: true, data: solutionData };
       }
+
+      return { success: true, data: solutionData };
 
       return { success: false, error: "Failed to process screenshots" };
     } catch (error: any) {
@@ -586,12 +546,7 @@ Space complexity: {O(notation) - detailed explanation}
         throw new Error("No problem info available");
       }
 
-      if (mainWindow) {
-        mainWindow.webContents.send("processing-status", {
-          message: "Processing debug screenshots...",
-          progress: 30
-        });
-      }
+
 
       const imageDataList = screenshots.map(screenshot => screenshot.data);
 
@@ -656,12 +611,7 @@ I need help with debugging or improving my solution. Here are screenshots of my 
         }
       ];
 
-      if (mainWindow) {
-        mainWindow.webContents.send("processing-status", {
-          message: "Analyzing code and generating debug feedback...",
-          progress: 60
-        });
-      }
+
 
       const debugResponse = await this.aiClient.chat.completions.create({
         model: config.aiModel || "gpt-4o",
@@ -671,12 +621,7 @@ I need help with debugging or improving my solution. Here are screenshots of my 
 
       debugContent = debugResponse.choices[0].message.content || "";
 
-      if (mainWindow) {
-        mainWindow.webContents.send("processing-status", {
-          message: "Debug analysis complete",
-          progress: 100
-        });
-      }
+
 
       let extractedCode = "// Debug mode - see analysis below";
       const codeMatch = debugContent.match(/```(?:[a-zA-Z]+)?([\s\S]*?)```/);
