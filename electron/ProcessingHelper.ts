@@ -796,6 +796,7 @@ Space complexity: {O(notation) - explanation}
             : ["Solution approach based on efficiency and readability"],
         time_complexity: timeComplexity,
         space_complexity: spaceComplexity,
+        problemInfo: extractedProblemInfo,
       };
 
       this.screenshotHelper.clearExtraScreenshotQueue();
