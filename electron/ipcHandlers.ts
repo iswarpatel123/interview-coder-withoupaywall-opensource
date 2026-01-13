@@ -248,6 +248,17 @@ export function initializeIpcHandlers(deps: IIpcHandlerDeps): void {
     }
   })
 
+  // Follow-up processing handler
+  ipcMain.handle("trigger-follow-up", async () => {
+    try {
+      await deps.processingHelper?.processFollowUp()
+      return { success: true }
+    } catch (error) {
+      console.error("Error processing follow-up:", error)
+      return { error: "Failed to process follow-up" }
+    }
+  })
+
   // Window movement handlers
   ipcMain.handle("trigger-move-left", () => {
     try {

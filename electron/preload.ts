@@ -223,7 +223,8 @@ const electronAPI = {
       ipcRenderer.removeListener("delete-last-screenshot", subscription)
     }
   },
-  deleteLastScreenshot: () => ipcRenderer.invoke("delete-last-screenshot")
+  deleteLastScreenshot: () => ipcRenderer.invoke("delete-last-screenshot"),
+  triggerFollowUp: () => ipcRenderer.invoke("trigger-follow-up")
 }
 
 // Before exposing the API

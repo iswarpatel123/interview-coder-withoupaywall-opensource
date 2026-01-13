@@ -2,15 +2,36 @@
 import * as axios from "axios";
 import { BrowserWindow } from "electron";
 import fs from "node:fs";
+import path from "node:path";
 import { OpenAI } from "openai";
 import { configHelper } from "./ConfigHelper";
 import { ScreenshotHelper } from "./ScreenshotHelper";
 import { IProcessingHelperDeps } from "./main";
 
+export interface ProblemInfo {
+  problem_statement: string;
+  constraints?: any;
+  example_input?: any;
+  example_output?: any;
+  solution_stub?: any;
+  notes?: any;
+}
+
+export interface DebugStateEntry {
+  problemInfo: ProblemInfo;
+  code: string;
+  timestamp: number;
+}
+
+export interface DebugState {
+  entries: DebugStateEntry[];
+}
+
 export class ProcessingHelper {
   private deps: IProcessingHelperDeps;
   private screenshotHelper: ScreenshotHelper;
   private aiClient: OpenAI | null = null;
+  private debugStatePath: string;
 
   // AbortControllers for API requests
   private currentProcessingAbortController: AbortController | null = null;
@@ -19,6 +40,12 @@ export class ProcessingHelper {
   constructor(deps: IProcessingHelperDeps) {
     this.deps = deps;
     this.screenshotHelper = deps.getScreenshotHelper()!;
+    
+    // Initialize debug state path in userData directory
+    const userDataPath = process.env.APPDATA || (process.platform === 'darwin' 
+      ? path.join(process.env.HOME || '', 'Library', 'Application Support')
+      : path.join(process.env.HOME || '', '.config'));
+    this.debugStatePath = path.join(userDataPath, 'interview-coder', 'debugState.json');
 
     // Initialize AI clients based on config
     this.initializeAIClients();
@@ -122,6 +149,122 @@ export class ProcessingHelper {
       console.error("Error getting language:", error);
       return "python";
     }
+  }
+
+  /**
+   * Extract problem statement from the LLM response text
+   */
+  private extractProblemStatement(responseText: string): string | null {
+    // Look for problem description in the response
+    // Try to find text between CODE or THOUGHTS sections that might contain the problem
+    const problemMatch = responseText.match(/problem[:\s]+([^\n]{20,500})/i);
+    if (problemMatch) {
+      return problemMatch[1].trim();
+    }
+    
+    // If no explicit problem statement found, return null
+    // The debug prompt will handle this gracefully
+    return null;
+  }
+
+  /**
+   * Save debug state to persistent storage
+   */
+  private saveDebugState(entry: DebugStateEntry): void {
+    try {
+      let state: DebugState = { entries: [] };
+      
+      // Load existing state if file exists
+      if (fs.existsSync(this.debugStatePath)) {
+        try {
+          const existingData = fs.readFileSync(this.debugStatePath, 'utf-8');
+          state = JSON.parse(existingData);
+        } catch (e) {
+          console.warn("Failed to parse existing debug state, starting fresh");
+        }
+      }
+      
+      // Clear existing entries and add new one (for fresh solution)
+      state.entries = [entry];
+      
+      // Ensure directory exists
+      const dir = path.dirname(this.debugStatePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      
+      fs.writeFileSync(this.debugStatePath, JSON.stringify(state, null, 2));
+      console.log("Debug state saved to:", this.debugStatePath);
+    } catch (error) {
+      console.error("Failed to save debug state:", error);
+    }
+  }
+
+  /**
+   * Append a new entry to the debug state (for follow-ups)
+   */
+  public appendDebugState(entry: DebugStateEntry): void {
+    try {
+      let state: DebugState = { entries: [] };
+      
+      // Load existing state if file exists
+      if (fs.existsSync(this.debugStatePath)) {
+        try {
+          const existingData = fs.readFileSync(this.debugStatePath, 'utf-8');
+          state = JSON.parse(existingData);
+        } catch (e) {
+          console.warn("Failed to parse existing debug state, starting fresh");
+        }
+      }
+      
+      // Append new entry
+      state.entries.push(entry);
+      
+      fs.writeFileSync(this.debugStatePath, JSON.stringify(state, null, 2));
+      console.log("Debug state appended, total entries:", state.entries.length);
+    } catch (error) {
+      console.error("Failed to append debug state:", error);
+    }
+  }
+
+  /**
+   * Load debug state from persistent storage
+   */
+  public loadDebugState(): DebugState | null {
+    try {
+      if (!fs.existsSync(this.debugStatePath)) {
+        return null;
+      }
+      
+      const data = fs.readFileSync(this.debugStatePath, 'utf-8');
+      return JSON.parse(data);
+    } catch (error) {
+      console.error("Failed to load debug state:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear debug state
+   */
+  public clearDebugState(): void {
+    try {
+      if (fs.existsSync(this.debugStatePath)) {
+        fs.unlinkSync(this.debugStatePath);
+        console.log("Debug state cleared");
+      }
+    } catch (error) {
+      console.error("Failed to clear debug state:", error);
+    }
+  }
+
+  /**
+   * Check if there is a previous solution (for follow-up mode)
+   */
+  public hasPreviousSolution(): boolean {
+    // Check if there are existing debug entries
+    const existingState = this.loadDebugState();
+    return existingState !== null && existingState.entries.length > 0;
   }
 
   public async processScreenshots(): Promise<void> {
@@ -326,6 +469,131 @@ export class ProcessingHelper {
     }
   }
 
+  /**
+   * Process follow-up screenshots with full context chaining
+   */
+  public async processFollowUp(): Promise<void> {
+    const mainWindow = this.deps.getMainWindow();
+    if (!mainWindow) return;
+
+    const config = configHelper.loadConfig();
+
+    // First verify we have a valid AI client
+    if (!config.aiApiKey || !this.aiClient) {
+      this.initializeAIClients();
+
+      if (!this.aiClient) {
+        console.error("AI client not initialized");
+        if (mainWindow) {
+          mainWindow.webContents.send(
+            this.deps.PROCESSING_EVENTS.API_KEY_INVALID,
+          );
+        }
+        return;
+      }
+    }
+
+    // Check if we have debug state (previous solution)
+    const debugState = this.loadDebugState();
+    if (!debugState || debugState.entries.length === 0) {
+      console.log("No previous solution found, falling back to standard processing");
+      await this.processScreenshots();
+      return;
+    }
+
+    // Get extra screenshots for follow-up
+    const extraScreenshotQueue = this.screenshotHelper.getExtraScreenshotQueue();
+    if (!extraScreenshotQueue || extraScreenshotQueue.length === 0) {
+      if (mainWindow) {
+        mainWindow.webContents.send(this.deps.PROCESSING_EVENTS.NO_SCREENSHOTS);
+      }
+      return;
+    }
+
+    const existingExtraScreenshots = extraScreenshotQueue.filter((path) =>
+      fs.existsSync(path),
+    );
+    if (existingExtraScreenshots.length === 0) {
+      if (mainWindow) {
+        mainWindow.webContents.send(this.deps.PROCESSING_EVENTS.NO_SCREENSHOTS);
+      }
+      return;
+    }
+
+    mainWindow?.webContents.send(this.deps.PROCESSING_EVENTS.DEBUG_START);
+
+    // Initialize AbortController
+    this.currentExtraProcessingAbortController = new AbortController();
+    const { signal } = this.currentExtraProcessingAbortController;
+
+    try {
+      // Only use extra screenshots for follow-up (the new question/scenario)
+      const screenshots = await Promise.all(
+        existingExtraScreenshots.map(async (path) => {
+          try {
+            if (!fs.existsSync(path)) {
+              console.warn(`Screenshot file does not exist: ${path}`);
+              return null;
+            }
+
+            return {
+              path,
+              preview: await this.screenshotHelper.getImagePreview(path),
+              data: fs.readFileSync(path).toString("base64"),
+            };
+          } catch (err) {
+            console.error(`Error reading screenshot ${path}:`, err);
+            return null;
+          }
+        }),
+      );
+
+      // Filter out any nulls from failed screenshots
+      const validScreenshots = screenshots.filter(
+        (s): s is NonNullable<typeof s> => s !== null,
+      );
+
+      if (validScreenshots.length === 0) {
+        throw new Error("Failed to load screenshot data for follow-up");
+      }
+
+      // Process as follow-up with context chaining
+      const result = await this.processExtraScreenshotsHelper(
+        validScreenshots,
+        signal,
+        true, // isFollowUp = true
+      );
+
+      if (result.success) {
+        this.deps.setHasDebugged(true);
+        mainWindow?.webContents.send(
+          this.deps.PROCESSING_EVENTS.DEBUG_SUCCESS,
+          result.data,
+        );
+      } else {
+        mainWindow?.webContents.send(
+          this.deps.PROCESSING_EVENTS.DEBUG_ERROR,
+          result.error,
+        );
+      }
+    } catch (error: any) {
+      console.error("Follow-up processing error:", error);
+      if (axios.isCancel(error)) {
+        mainWindow?.webContents.send(
+          this.deps.PROCESSING_EVENTS.DEBUG_ERROR,
+          "Follow-up processing was canceled by the user.",
+        );
+      } else {
+        mainWindow?.webContents.send(
+          this.deps.PROCESSING_EVENTS.DEBUG_ERROR,
+          error.message,
+        );
+      }
+    } finally {
+      this.currentExtraProcessingAbortController = null;
+    }
+  }
+
   private async processScreenshotsHelper(
     screenshots: Array<{ path: string; data: string }>,
     signal: AbortSignal,
@@ -418,7 +686,6 @@ Space complexity: {O(notation) - explanation}
 
       const responseText = response.choices[0].message.content || "";
 
-      let problemInfo: any = null;
       let code = "";
       let thoughts: string[] = [];
       let timeComplexity = "";
@@ -473,7 +740,8 @@ Space complexity: {O(notation) - explanation}
           const thoughtsContent = thoughtsMatch[1].trim();
 
           // Simple text-based parsing as fallback
-          const sections = [
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const _sections = [
             { name: "QUESTIONS TO ASK", regex: /- (.*)/g },
             { name: "SOLUTION APPROACHES", regex: /- (.*)/g },
             { name: "WALKTHROUGH", regex: /- (.*)/g },
@@ -501,7 +769,24 @@ Space complexity: {O(notation) - explanation}
       if (!timeComplexity) timeComplexity = "O(n) - Linear time complexity";
       if (!spaceComplexity) spaceComplexity = "O(n) - Linear space complexity";
 
-      this.deps.setProblemInfo(problemInfo);
+      // Extract problem info from the response for debugging/follow-up
+      const extractedProblemInfo: ProblemInfo = {
+        problem_statement: this.extractProblemStatement(responseText) || "Problem statement not available",
+        constraints: null,
+        example_input: null,
+        example_output: null,
+        solution_stub: null,
+        notes: null
+      };
+
+      // Store the initial problem info and code for debug/follow-up
+      this.saveDebugState({
+        problemInfo: extractedProblemInfo,
+        code: code,
+        timestamp: Date.now()
+      });
+
+      this.deps.setProblemInfo(extractedProblemInfo);
 
       const solutionData = {
         code: code,
@@ -511,6 +796,7 @@ Space complexity: {O(notation) - explanation}
             : ["Solution approach based on efficiency and readability"],
         time_complexity: timeComplexity,
         space_complexity: spaceComplexity,
+        problemInfo: extractedProblemInfo,
       };
 
       this.screenshotHelper.clearExtraScreenshotQueue();
@@ -523,9 +809,7 @@ Space complexity: {O(notation) - explanation}
       }
 
       return { success: true, data: solutionData };
-
-      return { success: false, error: "Failed to process screenshots" };
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (axios.isCancel(error)) {
         return {
           success: false,
@@ -533,18 +817,19 @@ Space complexity: {O(notation) - explanation}
         };
       }
 
-      if (error?.response?.status === 401) {
+      const axiosError = error as { response?: { status?: number }; message?: string };
+      if (axiosError.response?.status === 401) {
         return {
           success: false,
           error: "Invalid API key. Please check your settings.",
         };
-      } else if (error?.response?.status === 429) {
+      } else if (axiosError.response?.status === 429) {
         return {
           success: false,
           error:
             "API rate limit exceeded or insufficient credits. Please try again later.",
         };
-      } else if (error?.response?.status === 500) {
+      } else if (axiosError.response?.status === 500) {
         return {
           success: false,
           error: "Server error. Please try again later.",
@@ -555,7 +840,7 @@ Space complexity: {O(notation) - explanation}
       return {
         success: false,
         error:
-          error.message || "Failed to process screenshots. Please try again.",
+          axiosError.message || "Failed to process screenshots. Please try again.",
       };
     }
   }
@@ -570,16 +855,26 @@ Space complexity: {O(notation) - explanation}
 
   private async processExtraScreenshotsHelper(
     screenshots: Array<{ path: string; data: string }>,
-    signal: AbortSignal,
+    _signal: AbortSignal,
+    isFollowUp: boolean = false,
   ) {
     try {
-      const problemInfo = this.deps.getProblemInfo();
+      // Load debug state for context
+      const debugState = this.loadDebugState();
       const language = await this.getLanguage();
       const config = configHelper.loadConfig();
-      const mainWindow = this.deps.getMainWindow();
+
+      // Get problem info from state or deps
+      let problemInfo = this.deps.getProblemInfo();
+      
+      // If we have debug state, use the latest entry's problem info
+      if (debugState && debugState.entries.length > 0) {
+        const latestEntry = debugState.entries[debugState.entries.length - 1];
+        problemInfo = latestEntry.problemInfo;
+      }
 
       if (!problemInfo) {
-        throw new Error("No problem info available");
+        throw new Error("No problem info available. Please process the initial problem first.");
       }
 
       const imageDataList = screenshots.map((screenshot) => screenshot.data);
@@ -597,10 +892,68 @@ Space complexity: {O(notation) - explanation}
         }
       }
 
+      // Build the context sections for the prompt
+      let contextSections = "";
+
+      if (isFollowUp && debugState && debugState.entries.length > 0) {
+        // Build chained context for follow-up questions
+        contextSections = debugState.entries.map((entry, index) => {
+          return `
+### PREVIOUS PROBLEM INFO ${index + 1}
+${entry.problemInfo.problem_statement || "Problem statement not available"}
+
+### PREVIOUS CODE ${index + 1}
+\`\`\`${language}
+${entry.code}
+\`\`\`
+`;
+        }).join("\n");
+      } else {
+        // Standard debug mode - show previous solution and problem info
+        if (debugState && debugState.entries.length > 0) {
+          const latestEntry = debugState.entries[debugState.entries.length - 1];
+          contextSections = `
+### PREVIOUS SOLUTION
+\`\`\`${language}
+${latestEntry.code}
+\`\`\`
+
+### PROBLEM INFO
+${latestEntry.problemInfo.problem_statement || "Problem statement not available"}
+`;
+        } else {
+          contextSections = `
+### PROBLEM INFO
+${problemInfo.problem_statement || "Problem statement not available"}
+`;
+        }
+      }
+
+      const userPromptText = isFollowUp
+        ? `I have a follow-up question related to the problem below. Please consider the previous context and provide an updated solution.
+
+${contextSections}
+
+### CURRENT SCREENSHOT / NEW QUESTION
+Please analyze this new screenshot and provide an updated solution that addresses the follow-up question or scenario shown.`
+        : `I need help with debugging or improving my solution in ${language}.
+
+${contextSections}
+
+### CURRENT SCREENSHOT
+Here are screenshots of my code, the errors or test cases. Please provide a detailed analysis with:
+1. What issues you found in my code
+2. Specific improvements and corrections
+3. Any optimizations that would make the solution better
+4. A clear explanation of the changes needed`;
+
       const messages = [
         {
           role: "system" as const,
-          content: `You are a coding interview assistant helping debug and improve solutions. Analyze these screenshots which include either error messages, incorrect outputs, or test cases, and provide detailed debugging help.
+          content: `You are a coding interview assistant helping debug and improve solutions. 
+${isFollowUp 
+  ? `This is a follow-up question. Analyze the previous context and the new screenshot to provide an updated solution.`
+  : `Analyze these screenshots which include either error messages, incorrect outputs, or test cases, and provide detailed debugging help.`}
 
 Your response MUST follow this exact structure with these section headers (use ### for headers):
 ### Issues Identified
@@ -615,6 +968,11 @@ Your response MUST follow this exact structure with these section headers (use #
 ### Explanation of Changes Needed
 Here provide a clear explanation of why the changes are needed
 
+### Updated Code Solution
+\`\`\`${language}
+{your updated code here}
+\`\`\`
+
 ### Key Points
 - Summary bullet points of the most important takeaways
 
@@ -625,21 +983,7 @@ If you include code examples, use proper markdown code blocks with language spec
           content: [
             {
               type: "text" as const,
-              text: `I need help with debugging or improving my solution in ${language}.
-${
-  problemInfo
-    ? `The problem I'm solving is: "${problemInfo.problem_statement}"
-Constraints: ${problemInfo.constraints || "No specific constraints provided."}
-Solution Stub: ${problemInfo.solution_stub || "No solution stub provided."}
-Notes: ${problemInfo.notes || "No additional notes provided."}`
-    : ""
-}
-
-I need help with debugging or improving my solution. Here are screenshots of my code, the errors or test cases. Please provide a detailed analysis with:
-1. What issues you found in my code
-2. Specific improvements and corrections
-3. Any optimizations that would make the solution better
-4. A clear explanation of the changes needed`,
+              text: userPromptText,
             },
             ...imageDataList.map((data) => ({
               type: "image_url" as const,
@@ -657,10 +1001,18 @@ I need help with debugging or improving my solution. Here are screenshots of my 
 
       debugContent = debugResponse.choices[0].message.content || "";
 
-      let extractedCode = "// Debug mode - see analysis below";
+      let extractedCode = isFollowUp ? "" : "// Debug mode - see analysis below";
       const codeMatch = debugContent.match(/```(?:[a-zA-Z]+)?([\s\S]*?)```/);
       if (codeMatch && codeMatch[1]) {
-        extractedCode = codeMatch[1].trim();
+        // Get the last code block (updated solution should be at the end)
+        const codeBlocks = debugContent.match(/```(?:[a-zA-Z]+)?[\s\S]*?```/g);
+        if (codeBlocks && codeBlocks.length > 0) {
+          const lastBlock = codeBlocks[codeBlocks.length - 1];
+          const lastCodeMatch = lastBlock.match(/```(?:[a-zA-Z]+)?([\s\S]*?)```/);
+          extractedCode = lastCodeMatch ? lastCodeMatch[1].trim() : extractedCode;
+        } else {
+          extractedCode = codeMatch[1].trim();
+        }
       }
 
       let formattedDebugContent = debugContent;
@@ -691,14 +1043,26 @@ I need help with debugging or improving my solution. Here are screenshots of my 
               point.replace(/^[ ]*(?:[-*•]|\d+\.)[ ]+/, "").trim(),
             )
             .slice(0, 5)
-        : ["Debug analysis based on your screenshots"];
+        : [isFollowUp 
+            ? "Follow-up analysis based on your screenshots" 
+            : "Debug analysis based on your screenshots"];
+
+      // For follow-ups, also save the new solution to the debug state
+      if (isFollowUp && extractedCode) {
+        this.appendDebugState({
+          problemInfo: problemInfo,
+          code: extractedCode,
+          timestamp: Date.now()
+        });
+      }
 
       const response = {
-        code: extractedCode,
+        code: extractedCode || "// No code changes needed - see analysis below",
         debug_analysis: formattedDebugContent,
         thoughts: thoughts,
-        time_complexity: "N/A - Debug mode",
-        space_complexity: "N/A - Debug mode",
+        time_complexity: isFollowUp ? "See updated solution" : "N/A - Debug mode",
+        space_complexity: isFollowUp ? "See updated solution" : "N/A - Debug mode",
+        isFollowUp: isFollowUp,
       };
 
       return { success: true, data: response };
@@ -729,6 +1093,9 @@ I need help with debugging or improving my solution. Here are screenshots of my 
     this.deps.setHasDebugged(false);
 
     this.deps.setProblemInfo(null);
+
+    // Also clear the debug state file
+    this.clearDebugState();
 
     const mainWindow = this.deps.getMainWindow();
     if (wasCancelled && mainWindow && !mainWindow.isDestroyed()) {
