@@ -5,7 +5,7 @@ echo "IMPORTANT: This app is designed to be INVISIBLE by default!"
 echo "Use the keyboard shortcuts to control it:"
 echo
 echo "- Toggle Visibility: Cmd+B"
-echo "- Take Screenshot: Cmd+H"
+echo "- Take Screenshot: Cmd+Z"
 echo "- Process Screenshots: Cmd+Enter"
 echo "- Move Window: Cmd+Arrows (Left/Right/Up/Down)"
 echo "- Adjust Opacity: Cmd+[ (decrease) / Cmd+] (increase)"

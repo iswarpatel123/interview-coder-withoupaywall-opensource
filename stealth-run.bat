@@ -5,7 +5,7 @@ echo IMPORTANT: This app is designed to be INVISIBLE by default!
 echo Use the keyboard shortcuts to control it:
 echo.
 echo - Toggle Visibility: Ctrl+B (or Cmd+B on Mac)
-echo - Take Screenshot: Ctrl+H
+echo - Take Screenshot: Ctrl+Z
 echo - Process Screenshots: Ctrl+Enter
 echo - Move Window: Ctrl+Arrows (Left/Right/Up/Down)
 echo - Adjust Opacity: Ctrl+[ (decrease) / Ctrl+] (increase)
