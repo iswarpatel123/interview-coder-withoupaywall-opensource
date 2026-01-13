@@ -627,6 +627,7 @@ function getExtraScreenshotQueue(): string[] {
 function clearQueues(): void {
   state.screenshotHelper?.clearQueues()
   state.problemInfo = null
+  state.hasDebugged = false
   setView("queue")
 }
 

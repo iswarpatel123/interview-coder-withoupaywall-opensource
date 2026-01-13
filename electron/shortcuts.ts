@@ -50,6 +50,12 @@ export class ShortcutsHelper {
       await this.deps.processingHelper?.processScreenshots();
     });
 
+    // Shift+Space for follow-up mode with context chaining
+    globalShortcut.register("Shift+Space", async () => {
+      console.log("Shift+Space pressed. Processing follow-up with context chaining...");
+      await this.deps.processingHelper?.processFollowUp();
+    });
+
     globalShortcut.register("CommandOrControl+X", () => {
       console.log(
         "Command + X pressed. Canceling requests and resetting queues...",
